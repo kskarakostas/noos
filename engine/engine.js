@@ -13,16 +13,44 @@ var Engine = window.Engine = {
   version: '1.0',
   tabHooks: [],
   cheer: null,
+  kid: null,
+  bossItems: {quiz: [], tf: []},
   onTab(f){ this.tabHooks.push(f); },
   _cheer(ok){ try{ if(typeof this.cheer==='function') this.cheer(ok); }catch(e){} },
+  /* reward hook: runs only when engine/rewards.js is loaded; a reward error never breaks a game */
+  _reward(fn, o){
+    if(!window.Rewards) return null;
+    let res = null;
+    try{ res = Rewards[fn](o); }catch(e){ console.error(e); return null; }
+    try{ if(window.RewardsUI && typeof RewardsUI.celebrate==='function') RewardsUI.celebrate(res); }catch(e){ console.error(e); }
+    return res;
+  },
 
   /* ---------- start: progress table, tabs, home link, phone menu ---------- */
   start(cfg){
     cfg = cfg || {};
     if(cfg.id) window.PG_ID = cfg.id;
     if(cfg.rows) window.PG_ROWS = cfg.rows;
+    const kid = cfg.kid || (typeof PG_KID !== 'undefined' ? PG_KID : null) || null;
+    Engine.kid = kid === 'totX' ? null : kid;   /* 'totX' is the _template.html placeholder: a page that never set its kid has none */
     if(!document.getElementById('pg')) document.body.insertAdjacentHTML('afterbegin', Engine.html.pg());
     window.PG = Engine._makePG();
+    /* final boss slot (filled by the reward UI), only when rewards.js is loaded: before the tabs are wired and the phone menu is built.
+       Its own ids (fboss, fbossBox) never clash with page content such as a page's own #boss game. */
+    const pTab = $('#tabs button[data-t="parent"]'), pSec = document.getElementById('parent');
+    const boss = !!window.Rewards && !!(document.getElementById('quizBox') || document.getElementById('tfBox')) && !!pTab && !!pSec;
+    if(boss){
+      pTab.insertAdjacentHTML('beforebegin', '<button data-t="fboss">👹 Τελικό τέρας</button>');
+      pSec.insertAdjacentHTML('beforebegin', '<section id="fboss"><div class="card" id="fbossBox"></div></section>');
+    }
+    if(window.Rewards){
+      const file = location.pathname.split('/').pop(), h1 = document.querySelector('h1');
+      const o = {pageId: PG_ID, title: h1 ? h1.textContent.trim() : '', progress: PG.store(),
+        rows: PG_ROWS.concat(boss ? [['_boss','👹 Τελικό τέρας','boss']] : [])};
+      if(/^dim[\w-]+\.html$/.test(file)) o.file = file;
+      if(Engine.kid) o.kid = Engine.kid;
+      try{ Rewards.onPageOpen(o); }catch(e){ console.error(e); }
+    }
     $$('#tabs button').forEach(b => b.onclick = () => {
       $$('#tabs button').forEach(x => x.classList.toggle('on', x === b));
       $$('main section').forEach(s => s.classList.toggle('on', s.id === b.dataset.t));
@@ -35,6 +63,7 @@ var Engine = window.Engine = {
       header.insertAdjacentHTML('afterbegin', '<a id="homeLink" class="homebtn" href="index.html">🏠 Όλες οι σελίδες</a>');
     try{ if(localStorage.getItem('hub_seen')) document.getElementById('homeLink').style.display = 'inline-flex'; }catch(e){}
     Engine._mobile();
+    try{ window.RewardsUI && RewardsUI.init && RewardsUI.init(); }catch(e){ console.error(e); }
     return window.PG;
   },
 
@@ -95,12 +124,14 @@ var Engine = window.Engine = {
   /* ---------- quiz: items = [[question, [correct, wrong, wrong, wrong], explanation], ...] ---------- */
   quiz(o){
     const Q = o.items, N = o.n || 10;
+    Engine.bossItems.quiz = Q;
     let qz;
     function qzStart(){qz={list:shuffle(Q).slice(0,N),i:0,score:0,answered:false};qzShow()}
     function qzShow(){
       const box=$('#quizBox');
       if(qz.i>=qz.list.length){
         const s=qz.score,L=qz.list.length,r=s/L,stars=r>=.9?'🌟🌟🌟':r>=.7?'🌟🌟':r>=.5?'🌟':'💪';Engine._cheer(r>=.7);
+        Engine._reward('onRoundEnd',{pageId:PG_ID,kid:Engine.kid,kind:'quiz',score:s,total:L});
         box.innerHTML=`<div style="text-align:center"><div style="font-size:44px">${stars}</div><div class="big">${s} / ${L}</div><p>${r>=.9?'Εξαιρετικά!':r>=.7?'Πολύ καλά! Λίγη επανάληψη ακόμα.':'Ας δούμε ξανά τις κάρτες και ξαναπροσπαθούμε!'}</p><button class="btn" id="qzAgain">Νέο κουίζ 🔁</button></div>`;
         $('#qzAgain').onclick=qzStart;return;
       }
@@ -125,12 +156,14 @@ var Engine = window.Engine = {
   /* ---------- true/false: items = [[statement, true|false, explanation], ...] ---------- */
   truefalse(o){
     const TF = o.items, N = o.n || 12;
+    Engine.bossItems.tf = TF;
     let tf;
     function tfStart(){tf={list:shuffle(TF).slice(0,N),i:0,score:0,streak:0,best:0,done:false,t0:Date.now()};tfShow()}
     function tfShow(){
       const box=$('#tfBox');
       if(tf.i>=tf.list.length){
         const sec=Math.round((Date.now()-tf.t0)/1000),L=tf.list.length,r=tf.score/L;Engine._cheer(r>=.75);
+        Engine._reward('onRoundEnd',{pageId:PG_ID,kid:Engine.kid,kind:'tf',score:tf.score,total:L});
         box.innerHTML=`<div style="text-align:center"><div style="font-size:44px">${r>=.9?'🏆':r>=.75?'🌟':'💪'}</div><div class="big">${tf.score} / ${L}</div><p>Καλύτερο σερί: 🔥 ${tf.best} · Χρόνος: ${sec} δευτερόλεπτα</p><button class="btn" id="tfAgain">Ξανά 🔁</button></div>`;
         $('#tfAgain').onclick=tfStart;return;
       }
@@ -314,7 +347,7 @@ var Engine = window.Engine = {
     if(cfg.quiz)rows.push(['quiz','✅ Κουίζ','hit']);
     if(cfg.tf)rows.push(['tf','⚡ Σωστό ή Λάθος','hit']);
     (cfg.games||[]).forEach(g=>{if(g.row!==false)rows.push([g.key||g.id,g.rowLabel||g.tab,g.type==='blitz'?'list':'hit'])});
-    Engine.start({id:cfg.id,rows});
+    Engine.start({id:cfg.id,rows,kid:cfg.kid});
     if(cfg.cards)Engine.flashcards({cards:cfg.cards,tags:cfg.cardTags});
     if(cfg.quiz)Engine.quiz({items:cfg.quiz,n:cfg.quizN});
     if(cfg.tf)Engine.truefalse({items:cfg.tf,n:cfg.tfN});
@@ -331,25 +364,53 @@ Engine._makePG=function(){return (function(){
   const KEY='progress_'+PG_ID;let S={};
   try{S=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){S={}}
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
-  const pct=r=>{const s=S[r[0]];if(!s)return null;if(r[2]==='hit')return s.n?s.ok/s.n:null;return s.total?(s.list||[]).length/s.total:null};
+  /* longest list per list row during this page load, from the stored lengths; see setList */
+  const seen=Object.create(null);
+  Object.keys(S).forEach(k=>{if(S[k]&&Array.isArray(S[k].list))seen[k]=S[k].list.length});
+  /* another tab wrote this page's progress (a hub restore, the page open twice): reload S in place, since the reward layer
+     and the games hold this object, and redraw; bad JSON keeps the current store */
+  window.addEventListener('storage',e=>{if(e.key!==KEY)return;let v;try{v=JSON.parse(e.newValue||'{}')}catch(err){return}
+    if(!v||typeof v!=='object'||Array.isArray(v))return;
+    Object.keys(S).forEach(k=>delete S[k]);Object.keys(v).forEach(k=>{if(k!=='__proto__')S[k]=v[k]});render()});
+  /* row value: recent accuracy from the reward layer when loaded, else lifetime ok/n */
+  const pct=r=>{const s=S[r[0]];if(window.Rewards)return Rewards.rowValue(s,r[2]);if(!s)return null;if(r[2]==='hit')return s.n?s.ok/s.n:null;return s.total?(s.list||[]).length/s.total:null};
   const col=p=>p>=.8?'var(--ok)':p>=.5?'#e0b02f':'var(--bad)';
+  const stars=s=>{if(!window.Rewards)return '';const b=Math.max(0,Math.min(3,Math.floor(Number(s&&s.best))||0));return ` <span class="pgstars">${'⭐'.repeat(b)}${'☆'.repeat(3-b)}</span>`};
+  /* hit row text: the recent window once it holds 10 or more results (the % comes from it too), else lifetime */
+  const hitTxt=(s,p)=>{const r=typeof s.r==='string'?s.r:'',pc=Math.round(p*100);
+    return r.length>=10?`<b>${r.split('1').length-1}</b> / ${r.length} τελευταίες (${pc}%)`:`<b>${Number(s.ok)||0}</b> / ${Number(s.n)||0} σωστές (${pc}%)`};
+  const rowType=k=>{const r=PG_ROWS.find(x=>x[0]===k);return r?r[2]:'hit'};
+  /* hands the live store S to the reward layer, which updates best/low on the record and saves */
+  const reward=(k,type,ok)=>Engine._reward('onAnswer',{pageId:PG_ID,kid:Engine.kid,rows:PG_ROWS,progress:S,key:k,type,ok});
   function render(){
     let sum=0,cnt=0,ok=0,n=0;
-    const rows=PG_ROWS.map(r=>{const s=S[r[0]],p=pct(r);
+    const rows=PG_ROWS.filter(r=>r[0].charAt(0)!=='_').map(r=>{const s=S[r[0]],p=pct(r);
       if(p!==null){sum+=p;cnt++}
-      if(r[2]==='hit'&&s){ok+=s.ok;n+=s.n}
-      const txt=p===null?'<span class="muted">δεν ξεκίνησε</span>':r[2]==='hit'?`<b>${s.ok}</b> / ${s.n} σωστές (${Math.round(p*100)}%)`:`<b>${(s.list||[]).length}</b> / ${s.total}`;
-      return `<div class="pgrow"><span>${r[1]}</span><span>${txt}</span><div class="pgbar"><div style="width:${p===null?0:p*100}%;background:${p===null?'transparent':col(p)}"></div></div></div>`}).join('');
+      if(r[2]==='hit'&&s){ok+=Number(s.ok)||0;n+=Number(s.n)||0}
+      const txt=p===null?'<span class="muted">δεν ξεκίνησε</span>':r[2]==='hit'?hitTxt(s,p):`<b>${Array.isArray(s.list)?s.list.length:0}</b> / ${Number(s.total)||0}`;
+      return `<div class="pgrow"><span>${r[1]}${stars(s)}</span><span>${txt}</span><div class="pgbar"><div style="width:${p===null?0:p*100}%;background:${p===null?'transparent':col(p)}"></div></div></div>`}).join('');
     const all=cnt?Math.round(sum/cnt*100):0;
     document.getElementById('pgRows').innerHTML=rows;
     document.getElementById('pgPct').textContent=all+'%';
     document.getElementById('pgAll').innerHTML=`Συνολικά: <b>${all}%</b> · ${ok} ${ok===1?'σωστή απάντηση':'σωστές απαντήσεις'} σε ${n} ${n===1?'προσπάθεια':'προσπάθειες'}`;
   }
   const api={
-    hit(k,ok){const s=S[k]||(S[k]={ok:0,n:0});s.n++;if(ok)s.ok++;save();render()},
-    setList(k,list,total){S[k]={list,total};save();render()},
+    /* a stored record that is not an object starts fresh; a reward error never aborts the game's click handler */
+    hit(k,ok){let s=S[k];if(!s||typeof s!=='object'||Array.isArray(s))s=S[k]={ok:0,n:0};
+      if(window.Rewards){try{Rewards.pushResult(s,ok)}catch(e){console.error(e)}}else{s.n=(s.n||0)+1;s.ok=(s.ok||0)+(ok?1:0)}
+      save();reward(k,rowType(k),ok);render()},
+    /* keeps the reward fields best, hi and low across the list replacement; only a list longer than any this row had
+       during this page load is an answer: an unchanged list (a redraw), a shorter one (a card marked «Όχι ακόμα») and a
+       card toggled back to «Το ήξερα» never reach the reward layer */
+    setList(k,list,total){const old=S[k]||{},rec={list,total},top=seen[k]||0,grew=list.length>top;seen[k]=Math.max(top,list.length);
+      ['best','hi','low'].forEach(f=>{if(old[f]!==undefined)rec[f]=old[f]});S[k]=rec;save();if(grew)reward(k,'list',true);render()},
+    put(k,obj){S[k]=obj;save();render()},
     get(k){return S[k]},
-    reset(){S={};save();render()},render
+    store(){return S},
+    /* clears ok, n, r, list and total; keeps best, hi, low and the whole _boss trophy; S stays the same object */
+    reset(){Object.keys(S).forEach(k=>{const s=S[k];if(k==='_boss'&&s&&typeof s==='object')return;const keep={};
+      if(s&&typeof s==='object')['best','hi','low'].forEach(f=>{if(s[f]!==undefined)keep[f]=s[f]});
+      if(Object.keys(keep).length)S[k]=keep;else delete S[k]});save();render()},render
   };
   document.getElementById('pgBtn').onclick=e=>{e.stopPropagation();document.getElementById('pg').classList.toggle('open')};
   document.getElementById('pgPanel').onclick=e=>e.stopPropagation();
