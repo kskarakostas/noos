@@ -1,5 +1,6 @@
 /* Hub view: tile progress and stars, kid header (level, streak), daily quest, sticker album, badge wall, family jar and
-   the parent area (weekly note, jar settings, test dates, backup code).
+   the parent area (weekly note, jar settings, test dates, backup code). With ?view=teacher: a teacher view instead
+   (intro, chapter list, one grade at a time, none of the above).
    Reads window.CATALOG and window.Rewards; holds no school content (engine/ is published as plain files).
    Every string from storage goes through esc(); links only to files matching FILE_RE. Exposes window.Hub. */
 (function () {
@@ -77,6 +78,15 @@
     bNothing: 'Όλα είναι ήδη ενημερωμένα. Δεν χρειάζεται επαναφορά.',
     bConfirm: 'Ναι, κάνε την επαναφορά',
     bDone: n => 'Η επαναφορά έγινε: ' + (n === 1 ? 'ενημερώθηκε 1 εγγραφή.' : 'ενημερώθηκαν ' + n + ' εγγραφές.'),
+    // teacher view (?view=teacher)
+    tTitle: '👩‍🏫 Για τη δασκάλα',
+    tWhat: 'Σελίδες εξάσκησης για τη μελέτη στο σπίτι. Το περιεχόμενο ακολουθεί τα επίσημα σχολικά βιβλία από το ebooks.edu.gr.',
+    tDo: 'Σε κάθε σελίδα το παιδί βρίσκει σύνοψη, κάρτες, κουίζ, «Σωστό ή Λάθος», παιχνίδια και οδηγό για τον γονιό.',
+    tCovers: 'Τι καλύπτει',
+    tStore: 'Η πρόοδος αποθηκεύεται μόνο στη συσκευή όπου παίζει το παιδί και δεν στέλνεται πουθενά. Γι’ αυτό δεν μπορείτε να δείτε από εδώ την πρόοδο των μαθητών.',
+    tShared: 'Σε κοινόχρηστο ή σχολικό υπολογιστή, στη σύνδεση βγάλτε το τικ από το «Να με θυμάσαι σε αυτή τη συσκευή».',
+    tPick: 'Τάξη',
+    tExit: 'Έξοδος από προβολή δασκάλας',
   };
 
   const FILE_RE = /^dim[\w-]+\.html$/;
@@ -578,7 +588,61 @@
     if (ui.soundToggle(wrap)) hero.appendChild(wrap);
   }
 
+  /* ---------- teacher view (route A): ?view=teacher keeps it on this device, ?view=family or the exit link turns it off ---------- */
+  const VIEW_KEY = 'noos_view', GRADE_KEY = 'noos_view_grade';
+  const sGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const sSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* blocked storage: the choice lasts for this page only */ } };
+  const sDel = k => { try { localStorage.removeItem(k); } catch (e) { /* nothing stored */ } };
+  function viewMode() {
+    let q = null;
+    try { q = new URLSearchParams(location.search).get('view'); } catch (e) { /* no location */ }
+    if (q === 'teacher') sSet(VIEW_KEY, 'teacher');
+    else if (q === 'family') sDel(VIEW_KEY);
+    return q === 'teacher' || (q !== 'family' && sGet(VIEW_KEY) === 'teacher');
+  }
+  const TEACH = viewMode();
+
+  // Intro, chapter list from the catalog, grade picker; one grade section shown at a time.
+  function teacherView() {
+    const kids = kidsOf(), secs = [...document.querySelectorAll('section.kid[data-kid]')];
+    if (!secs.length) return;
+    let pick = document.getElementById('rwTPick');
+    if (!pick) {
+      const covers = kids.flatMap(k => (Array.isArray(k.subjects) ? k.subjects : []).map(s => {
+        const titles = (Array.isArray(s.pages) ? s.pages : []).map(p => esc(p.title || '')).join(', ');
+        return '<li><b>' + esc(k.grade || k.key) + ', ' + esc(s.name || '') + ':</b> ' + titles + '</li>';
+      }));
+      const box = mk('section', 'teach');
+      box.id = 'rwTeach';
+      box.setAttribute('aria-labelledby', 'rwTeachH');
+      box.innerHTML = '<h2 id="rwTeachH">' + esc(TXT.tTitle) + '</h2>'
+        + '<p>' + esc(TXT.tWhat) + '</p><p>' + esc(TXT.tDo) + '</p>'
+        + '<h3>' + esc(TXT.tCovers) + '</h3><ul class="teach-ch">' + covers.join('') + '</ul>'
+        + '<p>' + esc(TXT.tStore) + '</p><p>' + esc(TXT.tShared) + '</p>'
+        + '<p class="teach-exit"><a href="?view=family">' + esc(TXT.tExit) + '</a></p>';
+      pick = mk('div', 'teach-pick');
+      pick.id = 'rwTPick';
+      pick.setAttribute('role', 'group');
+      pick.setAttribute('aria-label', TXT.tPick);
+      for (const k of kids) {
+        const b = mk('button', '', String(k.grade || k.key));
+        b.type = 'button';
+        b.dataset.kid = k.key;
+        b.onclick = () => { sSet(GRADE_KEY, k.key); render(); };
+        pick.appendChild(b);
+      }
+      secs[0].insertAdjacentElement('beforebegin', box);
+      secs[0].insertAdjacentElement('beforebegin', pick);
+    }
+    const keys = kids.map(k => k.key);
+    let cur = sGet(GRADE_KEY);
+    if (keys.indexOf(cur) < 0) cur = keys[0];
+    secs.forEach(s => { s.hidden = s.dataset.kid !== cur; });
+    pick.querySelectorAll('button[data-kid]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kid === cur)));
+  }
+
   function render() {
+    if (TEACH) { step(teacherView); return; }   // no jar, level, stars, streak, quest, album, badges, parent area or sound
     const rw = R();
     if (!rw) return;
     let c = null;
@@ -600,5 +664,5 @@
     step(() => parentView(c));
   }
 
-  window.Hub = { render, esc, TXT };
+  window.Hub = { render, esc, TXT, teacher: () => TEACH };
 })();
