@@ -10,6 +10,7 @@
   const JAR_GOAL = 30;    // default family jar goal, in stars
   const QUEST_TASKS = 3;  // tasks in a daily quest
   const QUEST_HITS = 5;   // right answers a hit task asks for
+  const QUEST_CARDS = 5;  // new known flashcards a `cards` task asks for, at most
   const LOW_BELOW = 0.5;  // a row under this value, with enough answers, is flagged low (fixer)
   const LOW_MIN_ANSWERS = 5;
   const MASTERED = 0.9;    // row value of 3 stars; the weekly note lists only rows under it
@@ -100,7 +101,8 @@
     return yr + '-W' + pad(Math.floor(doy / 7) + 1);
   }
 
-  const newKid = () => ({ days: {}, badges: {}, freezes: {}, bonus: {}, quest: null, testDates: {}, questsDone: 0 });
+  // unlocked: {pageId: day} pages a parent unlocked ahead of the class on this device (timed release, see planState).
+  const newKid = () => ({ days: {}, badges: {}, freezes: {}, bonus: {}, quest: null, testDates: {}, questsDone: 0, unlocked: {} });
 
   // Own-property lookups only, so a key such as 'toString' or 'constructor' never reaches the prototype.
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -194,22 +196,46 @@
 
   // Daily quest: the weakest activities first (never played = lowest), random tie-break, one per activity.
   // `rand` is drawn once per remaining candidate, in input order, before sorting, so a fixed rand keeps input order on ties.
-  // A list task needs the row to grow by 1, so its target is 1; a hit task needs QUEST_HITS right answers today.
+  // A hit task needs QUEST_HITS right answers today. A list task needs the row to grow by its target: 1 for game
+  // records, min(QUEST_CARDS, cards left) for the flashcards row `cards` (QUEST_CARDS when the total is unknown).
   // A list row already at 100% can never grow, so it is skipped (its task could never finish).
+  // A candidate without a valid page file gives a task without a `file` key, so the task survives JSON unchanged.
+  // Class plan (candidates carry `tier`, see questCands): the weakest current-page rows fill QUEST_TASKS minus one slot, the
+  // weakest done-page row takes that slot (a review task), and when no done page has a candidate all slots go to current
+  // pages. Slots current pages cannot fill go to done pages, then to pages missing from the plan (tier 'free'). Tasks are
+  // listed in that order. Without any `tier` the selection is the plain weakest-first one.
+  const questTarget = c => {
+    if (c.type === 'hit') return QUEST_HITS;
+    if (c.key !== 'cards') return 1;
+    const left = isNum(c.total) && c.total > 0 ? c.total - (c.len || 0) : QUEST_CARDS;
+    return Math.max(1, Math.min(QUEST_CARDS, left));
+  };
   function buildQuest(cands, day, rand = Math.random) {
-    const seen = new Set(), tasks = [];
-    (cands || [])
+    const ranked = (cands || [])
       .filter(c => !(c.type !== 'hit' && typeof c.value === 'number' && c.value >= 1))
       .map(c => ({ c, v: typeof c.value === 'number' && !isNaN(c.value) ? c.value : -1, t: rand() }))
       .sort((a, b) => a.v - b.v || a.t - b.t)
-      .forEach(({ c }) => {
+      .map(x => x.c);
+    const seen = new Set(), tasks = [];
+    const take = (want, n) => {
+      for (const c of ranked) {
         const id = c.pageId + ':' + c.key;
-        if (tasks.length >= QUEST_TASKS || seen.has(id)) return;
-        seen.add(id);
-        const hit = c.type === 'hit';
-        tasks.push({ pageId: c.pageId, key: c.key, label: c.label, file: c.file, type: c.type,
-          target: hit ? QUEST_HITS : 1, startLen: hit ? 0 : (c.len || 0) });
-      });
+        if (n <= 0 || tasks.length >= QUEST_TASKS) return;
+        if (!want(c) || seen.has(id)) continue;
+        seen.add(id); n--;
+        const hit = c.type === 'hit', t = { pageId: c.pageId, key: c.key, label: c.label };
+        if (isStr(c.file) && FILE_RE.test(c.file)) t.file = c.file;
+        tasks.push(Object.assign(t, { type: c.type, target: questTarget(c), startLen: hit ? 0 : (c.len || 0) }));
+      }
+    };
+    const tier = name => c => c.tier === name;
+    if (!ranked.some(c => c.tier)) take(() => true, QUEST_TASKS);
+    else {
+      const review = ranked.some(tier('done')) ? 1 : 0;
+      take(tier('current'), QUEST_TASKS - review);
+      take(tier('done'), QUEST_TASKS);
+      take(tier('free'), QUEST_TASKS);
+    }
     return { date: day, tasks, done: false };
   }
 
@@ -327,13 +353,15 @@
   const dayOk = d => isObj(d) && fieldsOk(d, DAY_T) && (!own(d, 'acts') || mapOk(d.acts, a => isObj(a) && fieldsOk(a, DAY_T)));
   const dates = m => mapOk(m, validDay);
   const dayMap = (m, ok) => mapOk(m, ok) && Object.keys(m).every(validDay);   // keys are days too
+  const pageIdOk = id => isStr(id) && ID_RE.test(id) && !BAD_KEYS.has(id);
+  const pageDays = m => dates(m) && Object.keys(m).every(pageIdOk);   // {pageId: day}
   const REC_T = { ok: nonNeg, n: nonNeg, best: x => Number.isInteger(x) && x >= 0 && x <= 3, hi: nonNeg, total: nonNeg, r: isStr, low: isBool, won: isBool, list: Array.isArray };
   const BOSS_T = { ...REC_T, best: x => Number.isInteger(x) && x >= 0 };   // the boss row keeps a score out of its round length, not stars
   const rowOk = r => Array.isArray(r) && r.length === 3 && r.every(isStr) && ID_RE.test(r[0]) && ROW_TYPES.includes(r[2]);   // [key, label, type]
   const MANIFEST_T = { file: f => isStr(f) && FILE_RE.test(f), kid: k => isStr(k) && KID_RE.test(k), title: t => isStr(t) && t.length <= MAX_TITLE,
     rows: rs => Array.isArray(rs) && rs.every(rowOk), ts: isNum };
   const KID_T = { days: m => mapOk(m, dayOk), badges: dates, freezes: dates, testDates: dates, bosses: dates, bonus: m => dayMap(m, isNum),
-    questsDone: nonNeg, quest: q => q === null || isObj(q) };   // quest is only type-checked: it is never imported, see mergeAll
+    unlocked: pageDays, questsDone: nonNeg, quest: q => q === null || isObj(q) };   // quest is only type-checked: it is never imported, see mergeAll
   const FAMILY_T = { launch: validDay, lastExport: validDay, jarBase: nonNeg, jarGoal: x => isNum(x) && x > 0, jarSpent: nonNeg, jarReward: isStr, sound: isBool,
     jarCelebrated: nonNeg };   // the jarSpent value when the hub last celebrated a full jar, so each jar is celebrated once
 
@@ -423,7 +451,8 @@
 
   // A quest is never imported (mergeAll drops it from incoming kids): it is rebuilt daily and carries a page file and labels.
   function mergeKid(x, y) {
-    const out = clone(x), maps = { days: (a, b) => (nOf(b) > nOf(a) ? b : a), badges: earliest, freezes: earliest, bosses: earliest, bonus: earliest, testDates: a => a };
+    const out = clone(x), maps = { days: (a, b) => (nOf(b) > nOf(a) ? b : a), badges: earliest, freezes: earliest, bosses: earliest, bonus: earliest, testDates: a => a,
+      unlocked: earliest };   // unlocked: a page unlocked on either device stays unlocked, from the earlier day
     for (const f of Object.keys(maps)) if (own(x, f) || own(y, f)) out[f] = unionMap(getOwn(x, f), getOwn(y, f), maps[f]);
     if (own(x, 'questsDone') || own(y, 'questsDone')) out.questsDone = Math.max(num(getOwn(x, 'questsDone')), num(getOwn(y, 'questsDone')));
     return out;
@@ -541,37 +570,78 @@
     for (const id of ids) { kid.badges[id] = day; got.push(id); }
   }
 
+  // The class plan known to this module, set by the page layer (rewards-ui.js when plan.js settles, the hub before its
+  // quest): null or undefined = no plan (as on a fresh module), PLAN_PENDING = plan.js is on its way, anything else is
+  // the plan object as loaded (planState checks it). This file never reads window.
+  const PLAN_PENDING = Object.freeze({ pending: true });
+  let knownPlan = null;
+  function usePlan(plan) { knownPlan = plan === undefined ? null : plan; }
+
   // Quest candidates from the kid's manifests and stored progress (R9): a hit row with fewer than 5 answers (no star
-  // possible yet) has value null, so it counts as weakest.
-  function questCands(kidKey) {
-    const ms = manifests(), cands = [];
+  // possible yet) has value null, so it counts as weakest. A list row carries its stored total (null when unknown).
+  // `opts` = {plan, day, unlocked, extra}, all optional. Only when planState(plan, kidKey, day, unlocked) is active: each
+  // candidate gets `tier` ('current', 'done', or 'free' for a page missing from the plan's order), upcoming and hidden
+  // pages give none, and `extra` ({pageId: manifest}, e.g. the hub's build-time entries) adds the kid's pages that have
+  // no device manifest, checked like a stored one. Inactive: exactly the plain device-manifest candidates.
+  // `progress` ({pageId: progress object}, with or without a plan) is read instead of the stored progress of those pages:
+  // the page strip passes its own page's progress as it was at page open, before the page's games stored anything.
+  function questCands(kidKey, opts) {
+    const o = isObj(opts) ? opts : {}, st = planState(o.plan, kidKey, o.day, o.unlocked);
+    const ms = manifests(), cands = [], prog = isObj(o.progress) ? o.progress : {};
+    if (st.active && isObj(o.extra)) {
+      for (const id of keysOf(o.extra)) {
+        if (own(ms, id) || BAD_KEYS.has(id) || !ID_RE.test(id) || !isObj(o.extra[id])) continue;
+        ms[id] = normalize(o.extra[id], { rows: [] }, MANIFEST_T);
+      }
+    }
     for (const id of Object.keys(ms)) {
       if (ms[id].kid !== kidKey) continue;
-      const p = load('progress_' + id) || {};
+      const tier = !st.active ? null : own(st.states, id) ? st.states[id] : 'free';
+      if (tier === 'upcoming' || tier === 'hidden') continue;
+      const p = (own(prog, id) && isObj(prog[id]) ? prog[id] : load('progress_' + id)) || {};
       for (const [key, label, type] of countedRows(ms[id].rows)) {
         const rec = recOf(p, key), hit = type === 'hit';
         const value = hit ? (rec && num(rec.n) >= 5 ? rowValue(rec, type) : null) : rowValue(rec, type);
-        cands.push({ pageId: id, key, label, file: ms[id].file, type, value, len: hit ? 0 : listLen(rec) });
+        const c = { pageId: id, key, label, file: ms[id].file, type, value, len: hit ? 0 : listLen(rec),
+          total: !hit && rec && isNum(rec.total) ? rec.total : null };
+        if (tier) c.tier = tier;
+        cands.push(c);
       }
     }
     return cands;
   }
 
+  // Pure. The kid's stored quest when it is well-formed, non-empty and for `day`; otherwise null.
+  function dayQuest(kid, day) {
+    const q = isObj(kid) ? getOwn(kid, 'quest') : undefined;
+    return isObj(q) && q.date === day && Array.isArray(q.tasks) && q.tasks.length > 0 && q.tasks.every(isObj) ? q : null;
+  }
+
   // Builds today's quest into `kid` unless it already holds a well-formed, non-empty one for `day`; true when it built one.
   // An empty quest (built before the kid had a manifest) is rebuilt, so a page opened later still gets a quest that day.
-  function questFor(kid, kidKey, day) {
-    const q = kid.quest;
-    if (isObj(q) && q.date === day && Array.isArray(q.tasks) && q.tasks.length > 0 && q.tasks.every(isObj)) return false;
-    kid.quest = buildQuest(questCands(kidKey), day);
+  // A stored quest is kept all day, whatever plan is passed later. Without an own `plan` in opts the plan set by usePlan
+  // is used; while it is PLAN_PENDING nothing is built (false), so no path builds a planless quest while plan.js is on its
+  // way. Without an own `unlocked` in opts the kid store's `unlocked` is used (slice 4; planState checks it).
+  function questFor(kid, kidKey, day, opts) {
+    if (dayQuest(kid, day)) return false;
+    const o = Object.assign({}, isObj(opts) ? opts : {}, { day });
+    if (!own(o, 'plan')) {
+      if (knownPlan === PLAN_PENDING) return false;
+      o.plan = knownPlan;
+    }
+    if (!own(o, 'unlocked')) o.unlocked = getOwn(kid, 'unlocked');
+    kid.quest = buildQuest(questCands(kidKey, o), day);
     return true;
   }
 
   // Saves only a rebuilt quest with tasks: an empty one is never kept (questFor rebuilds it), so a kid with no
-  // manifest costs no write on each hub render.
-  function ensureQuest(kidKey, day) {
+  // manifest costs no write on each hub render. `opts` = {plan, unlocked, extra, progress}, see questCands; `plan` and
+  // `unlocked` default to usePlan's plan and the kid store (questFor). The page layer reads window.PLAN and manifest.js and
+  // passes them in; this file never does. While the plan is pending it returns the stored quest (possibly another day's or null).
+  function ensureQuest(kidKey, day, opts) {
     if (!kidKey) return null;
     const kid = kidStore(kidKey);
-    if (questFor(kid, kidKey, day || dayKey(new Date())) && kid.quest.tasks.length) saveKid(kidKey, kid);
+    if (questFor(kid, kidKey, day || dayKey(new Date()), opts) && kid.quest.tasks.length) saveKid(kidKey, kid);
     return kid.quest;
   }
 
@@ -587,6 +657,8 @@
 
   // Launch seeding: a record without a numeric `best` gets best (and hi on list rows) silently, with no badge; the
   // seeded stars of counted rows on a kid page move family().jarBase, so the jar starts empty.
+  // The day's quest is not built here: the page strip (rewards-ui.js questStrip) builds it once the class plan has loaded
+  // or failed to load, so a quest is never built from a planless view while plan.js is on its way.
   function onPageOpen(o) {
     const { pageId, kid, file, title } = o || {};
     const rows = Array.isArray(o && o.rows) ? o.rows.filter(rowOk) : [];
@@ -609,7 +681,6 @@
     }
     if (seeded) save('progress_' + pageId, p);
     if (kid && gained > 0) { fam.jarBase = num(fam.jarBase) + gained; saveFamily(fam); }
-    if (kid) ensureQuest(kid, dayKey(new Date()));
   }
 
   // `progress` is the page's live store, already updated by pushResult. Order (R2/R9): markLow, bumpBest, answer
@@ -637,8 +708,8 @@
     if (up.to > up.from) logStars(k, day, up.to - up.from);
     for (const d of streak(k, day).frozen) { const wk = isoWeek(d); if (!own(k.freezes, wk)) k.freezes[wk] = d; }   // first freeze of a week sticks
     check({ kind: 'day' });
-    questFor(k, kid, day);   // a page left open across midnight gets the new day's quest
-    if (!own(k.bonus, day) && questStatus(k, day, questLens(k.quest, pageId, p)).allDone) {
+    questFor(k, kid, day);   // a page left open across midnight gets the new day's quest (none while the plan is pending)
+    if (!own(k.bonus, day) && dayQuest(k, day) && questStatus(k, day, questLens(k.quest, pageId, p)).allDone) {
       k.bonus[day] = 1;
       k.questsDone = num(k.questsDone) + 1;
       res.questDone = true;
@@ -686,6 +757,27 @@
       out[kidKey] = got;
     }
     return out;
+  }
+
+  // The per-device override (timed release): a parent unlocks a page ahead of the class, or locks it again. Each touches
+  // only the kid store; true when it changed it. A bad kid key or page id, an id already unlocked (unlockPage, which keeps
+  // the first day) or one not unlocked (lockPage) is a no-op that writes nothing.
+  const kidKeyOk = k => isStr(k) && KID_RE.test(k) && !BAD_KEYS.has(k);
+  function unlockPage(kidKey, pageId, at) {
+    if (!kidKeyOk(kidKey) || !pageIdOk(pageId)) return false;
+    const k = kidStore(kidKey);
+    if (own(k.unlocked, pageId)) return false;
+    k.unlocked[pageId] = dayKey(when(at));
+    saveKid(kidKey, k);
+    return true;
+  }
+  function lockPage(kidKey, pageId) {
+    if (!kidKeyOk(kidKey) || !pageIdOk(pageId)) return false;
+    const k = kidStore(kidKey);
+    if (!own(k.unlocked, pageId)) return false;
+    delete k.unlocked[pageId];
+    saveKid(kidKey, k);
+    return true;
   }
 
   // Pure: stars per kid and in total from a data map {storeKey: object}. A kid's stars are the page stars over its manifests
@@ -841,7 +933,10 @@
 
   // Up to 15 questions from both pools, split in proportion to pool size; a non-empty pool gives at least one
   // question when the round has room for two, and a short pool hands its unused places to the other one.
-  function bossRound(quiz, tf, rand = Math.random) {
+  // seen (optional, audit L6): a Set of the items already shown in this page visit. The split stays the same; within each
+  // kind the unseen items come first and seen ones only fill what is left. Each pool is shuffled as before and then split
+  // (stably) into unseen and seen, so with nothing seen the round is drawn exactly as without `seen` for the same rand.
+  function bossRound(quiz, tf, rand = Math.random, seen = null) {
     const q = Array.isArray(quiz) ? quiz : [], t = Array.isArray(tf) ? tf : [];
     const n = Math.min(BOSS_LEN, q.length + t.length);
     if (!n) return [];
@@ -851,28 +946,58 @@
     nt = Math.min(nt, t.length);
     let nq = n - nt;
     if (nq > q.length) { nq = q.length; nt = n - nq; }
-    const out = mix(q, rand).slice(0, nq).map(item => ({ kind: 'quiz', item }))
-      .concat(mix(t, rand).slice(0, nt).map(item => ({ kind: 'tf', item })));
+    const was = seen && typeof seen.has === 'function' ? it => seen.has(it) : () => false;
+    const draw = a => { const m = mix(a, rand); return m.filter(it => !was(it)).concat(m.filter(was)); };
+    const out = draw(q).slice(0, nq).map(item => ({ kind: 'quiz', item }))
+      .concat(draw(t).slice(0, nt).map(item => ({ kind: 'tf', item })));
     return mix(out, rand);
   }
 
   // 13 of 15; the same share, rounded up, on a shorter round.
   const bossPass = len => Math.ceil(len * 13 / 15);
 
-  // Original characters (no known cartoon or game figures), one per subject colour.
+  // Hearts (audit L7): a fight starts with the misses that still allow a win, plus one (3 on a 15-question round), so the
+  // last heart goes exactly when the pass mark can no longer be reached. 0 for an empty or invalid length (no fight).
+  const roundLen = len => (Number.isInteger(len) && len > 0 ? len : 0);
+  const bossHearts = len => (roundLen(len) ? len - bossPass(len) + 1 : 0);
+  // Pure. After an answer: {over, why, won, hearts}. why 'hearts' (the last heart went: a loss, even on the last question),
+  // 'end' (the last question was answered with hearts left: a win, its score at least the pass mark) or null while it goes
+  // on; won is null until it is over. The practice round (o.practice) has no hearts (null) and no result: it just ends.
+  function bossOver(o) {
+    const { len, answered, wrong, practice } = o || {};
+    const n = roundLen(len), a = Number.isInteger(answered) && answered > 0 ? answered : 0;
+    if (practice) return a >= n ? { over: true, why: 'end', won: null, hearts: null } : { over: false, why: null, won: null, hearts: null };
+    const hearts = Math.max(0, bossHearts(n) - (Number.isInteger(wrong) && wrong > 0 ? wrong : 0));
+    if (!hearts) return { over: true, why: 'hearts', won: false, hearts: 0 };
+    return a >= n ? { over: true, why: 'end', won: true, hearts } : { over: false, why: null, won: null, hearts };
+  }
+  // Pure. A taunt line at random, never `last` again while there is another; '' with no lines.
+  function bossTaunt(lines, last, rand = Math.random) {
+    const all = Array.isArray(lines) ? lines : [], pool = all.filter(l => l !== last);
+    const from = pool.length ? pool : all;
+    if (!from.length) return '';
+    const r = Number(rand());
+    return from[Math.min(from.length - 1, Math.max(0, Math.floor((Number.isFinite(r) ? r : 0) * from.length)))];
+  }
+
+  // Original characters (no known cartoon or game figures), one per subject colour. taunt (audit L7): what the boss says on
+  // a miss, next to the explanation; he boasts about himself and never mocks the child; at most 60 characters each.
   const BOSSES = {
     phys: { name: 'Μπουρμπουλήθρας', emo: '👾',
       intro: 'Είμαι ο Μπουρμπουλήθρας! Ανακατεύω τα υλικά και μπερδεύω τα παιδιά. Απάντησε σωστά για να με ξεφουσκώσεις!',
       win: 'Πφφσσς... Με ξεφούσκωσες! Ξέρεις τη Φυσική σου!',
-      lose: 'Μπλουπ μπλουπ! Αυτή τη φορά γλίτωσα. Κάνε λίγη επανάληψη και έλα ξανά!' },
+      lose: 'Μπλουπ μπλουπ! Αυτή τη φορά γλίτωσα. Κάνε λίγη επανάληψη και έλα ξανά!',
+      taunt: ['Μπλουπ! Τα ανακάτεψα όλα σαν μίγμα!', 'Χι χι! Φούσκωσα ακόμα πιο πολύ!', 'Πλοπ πλοπ! Οι φούσκες μου μπερδεύουν τα πάντα!'] },
     math: { name: 'Αριθμοφάγος', emo: '🐲',
       intro: 'Είμαι ο Αριθμοφάγος! Τρώω τους αριθμούς και αφήνω τις πράξεις μισές. Λύσε σωστά για να με διώξεις!',
       win: 'Ωχ! Μου έκοψες την όρεξη! Είσαι μάστορας στους αριθμούς!',
-      lose: 'Χαμ χαμ! Αυτή τη φορά κέρδισα εγώ. Ξαναδοκίμασε!' },
+      lose: 'Χαμ χαμ! Αυτή τη φορά κέρδισα εγώ. Ξαναδοκίμασε!',
+      taunt: ['Χαμ! Αυτόν τον αριθμό τον έφαγα εγώ!', 'Νιαμ νιαμ! Τι νόστιμη πράξη!', 'Μπουρπ! Άλλο ένα ψηφίο στην κοιλιά μου!'] },
     default: { name: 'Ξεχασιάρης', emo: '👹',
       intro: 'Είμαι ο Ξεχασιάρης! Θέλω να σε κάνω να ξεχάσεις όσα έμαθες. Θα με νικήσεις;',
       win: 'Αααχ! Τα θυμάσαι όλα! Με νίκησες!',
-      lose: 'Χε χε! Κάτι ξέχασες. Κάνε επανάληψη και έλα ξανά!' },
+      lose: 'Χε χε! Κάτι ξέχασες. Κάνε επανάληψη και έλα ξανά!',
+      taunt: ['Σβιτς σβιτς! Το έσβησα στο πι και φι!', 'Χε χε! Κανείς δεν σβήνει πιο γρήγορα από μένα!', 'Σβουπ! Ούτε εγώ δεν θυμάμαι τι ήταν!'] },
   };
   // The subject comes from the page id: dim5_fysiki_ch02 -> phys, dim3_mathimatika_en01c -> math.
   const bossFor = pageId => {
@@ -880,14 +1005,140 @@
     return s === 'fysiki' ? BOSSES.phys : s === 'mathimatika' ? BOSSES.math : BOSSES.default;
   };
 
+  /* ---------- page guide: «Συνέχισε» and the final boss lock ---------- */
+  const BOSS_TAB = 'fboss';
+  const TAB_OF = { cards: 'fc', ws: 'wsearch' };   // row keys whose tab id differs; any other row opens the tab of its own name
+  const UNLOCK_ROWS = 3;   // played rows that unlock the final boss (all of them on a page with fewer)
+  const UNLOCK_DAYS = 3;   // a test this many days ahead or nearer unlocks it at once
+  // Row value, or null while the row is unplayed: a list row with an empty list is unplayed too, as in weekly (physics ch02
+  // stores {list: [], total} for `miss` on load, before the child does anything).
+  const playedValue = (rec, type) => (type !== 'hit' && !listLen(rec) ? null : rowValue(rec, type));
+  // Mastered: the 3-star value; a hit row also needs MIN_RECENT answers, as in starsFor, so one right answer is not mastery.
+  const mastered = (rec, type) => {
+    const v = rowValue(rec, type);
+    return v !== null && v >= MASTERED && !(type === 'hit' && num(rec.n) < MIN_RECENT);
+  };
+
+  // Pure. The tab to open next: the first never-played row in `tabs` order (the order on screen), else the played row with
+  // the lowest value (first on screen on a tie); mastered rows and rows without a tab are skipped. With nothing left, the
+  // final boss when the page has it, it is unlocked and not won yet; otherwise null.
+  function nextTab(o) {
+    const { rows, progress, tabs, bossUnlocked } = o || {};
+    const T = Array.isArray(tabs) ? tabs : [], p = isObj(progress) ? progress : {};
+    const cands = [];
+    for (const [key, , type] of countedRows(Array.isArray(rows) ? rows.filter(rowOk) : [])) {
+      const tab = T.includes(key) ? key : own(TAB_OF, key) && T.includes(TAB_OF[key]) ? TAB_OF[key] : null;
+      if (!tab || tab === BOSS_TAB) continue;
+      const rec = recOf(p, key);
+      if (mastered(rec, type)) continue;
+      cands.push({ tab, at: T.indexOf(tab), v: playedValue(rec, type) });
+    }
+    cands.sort((a, b) => (a.v === null ? -1 : a.v) - (b.v === null ? -1 : b.v) || a.at - b.at);
+    if (cands.length) return cands[0].tab;
+    const boss = recOf(p, '_boss');
+    return T.includes(BOSS_TAB) && bossUnlocked === true && !(boss && boss.won === true) ? BOSS_TAB : null;
+  }
+
+  // Pure. {unlocked, left}: unlocked once UNLOCK_ROWS counted rows are played (see playedValue; all of them on a smaller
+  // page), or a test date for the page is today or within UNLOCK_DAYS days, or a `_boss` record exists (a child who fought
+  // it keeps it). `left` is how many more rows unlock it, 0 when unlocked.
+  function bossUnlock(o) {
+    const { rows, progress, today, testDate } = o || {};
+    const p = isObj(progress) ? progress : {};
+    const cr = countedRows(Array.isArray(rows) ? rows.filter(rowOk) : []);
+    const played = cr.filter(r => playedValue(recOf(p, r[0]), r[2]) !== null).length;
+    const left = Math.max(0, Math.min(UNLOCK_ROWS, cr.length) - played);
+    const days = isStr(today) && isStr(testDate) ? daysUntil(today, testDate) : null;
+    const unlocked = left === 0 || (days !== null && days <= UNLOCK_DAYS) || !!recOf(p, '_boss');
+    return { unlocked, left: unlocked ? 0 : left };
+  }
+
+  /* ---------- timed release: the class plan (plan.js, audit section 8) ---------- */
+  const UPCOMING = 2;   // pages after the last current one shown as upcoming teasers
+  const planOff = () => ({ active: false, states: {}, current: [], done: [], upcoming: [], hidden: [] });
+  const planKid = (plan, kidKey) => {
+    const kids = isObj(plan) ? getOwn(plan, 'kids') : undefined;
+    const k = isObj(kids) && isStr(kidKey) ? getOwn(kids, kidKey) : undefined;
+    return isObj(k) ? k : null;
+  };
+  const planPage = (k, pageId) => {
+    const pages = getOwn(k, 'pages'), pg = isObj(pages) && isStr(pageId) ? getOwn(pages, pageId) : undefined;
+    return isObj(pg) ? pg : null;
+  };
+
+  // Pure, never throws. The kid's `order` (string ids, each once at its first position, unsafe keys skipped) gets states:
+  // the current ids are `current` (an id or a list; ids not in order ignored), else the last page in order whose valid `from`
+  // is on or before `day`; with neither, the plan is not active (states empty: callers behave as without a plan).
+  // Before the first current page: done; between the first and last current page: done. Then the override: an id after the
+  // last current page with an own key in `unlocked` becomes current (done and current pages are unaffected). The UPCOMING
+  // first pages after the last current page that are not current are upcoming (a page the parent skipped stays one of them,
+  // never done); the rest after it are hidden. The override alone never makes a plan active. The arrays list ids in plan order.
+  function planState(plan, kidKey, day, unlocked) {
+    try {
+      const k = planKid(plan, kidKey), raw = k ? getOwn(k, 'order') : undefined;
+      if (!Array.isArray(raw)) return planOff();
+      const order = [];
+      for (const id of raw) if (isStr(id) && ID_RE.test(id) && !BAD_KEYS.has(id) && !order.includes(id)) order.push(id);
+      let cur = getOwn(k, 'current');
+      cur = (isStr(cur) ? [cur] : Array.isArray(cur) ? cur : []).filter(id => order.includes(id));
+      if (!cur.length && validDay(day)) {
+        const past = order.filter(id => { const from = getOwn(planPage(k, id) || {}, 'from'); return validDay(from) && daysUntil(from, day) !== null; });
+        if (past.length) cur = [past[past.length - 1]];
+      }
+      if (!cur.length) return planOff();
+      const last = Math.max(...cur.map(id => order.indexOf(id)));
+      const out = planOff(), U = isObj(unlocked) ? unlocked : {};
+      let soon = 0;
+      order.forEach((id, i) => {
+        const s = cur.includes(id) ? 'current' : i < last ? 'done' : own(U, id) ? 'current' : soon++ < UPCOMING ? 'upcoming' : 'hidden';
+        out.states[id] = s;
+        out[s].push(id);
+      });
+      out.active = true;
+      return out;
+    } catch { return planOff(); }
+  }
+
+  // The page's default test date in the plan ('YYYY-MM-DD'), or null when absent or malformed. Pure, never throws.
+  function planTest(plan, kidKey, pageId) {
+    try {
+      const k = planKid(plan, kidKey), pg = k ? planPage(k, pageId) : null, t = pg ? getOwn(pg, 'test') : undefined;
+      return validDay(t) ? t : null;
+    } catch { return null; }
+  }
+
+  // Pure, never throws. True when a kid's chapter page shows the soft «not started in class yet» banner: the kid's plan is
+  // active (planState with `day` and the kid store's `unlocked`) and the page is upcoming or hidden. False for a current or
+  // done page, a page missing from the plan's order, a page the parent unlocked (current through planState), a dormant,
+  // missing or pending plan (PLAN_PENDING), and without a kid key or page id.
+  function planBanner(plan, kidKey, pageId, day, unlocked) {
+    if (plan === PLAN_PENDING || !isStr(kidKey) || !isStr(pageId)) return false;
+    const st = planState(plan, kidKey, day, unlocked);
+    const s = st.active && own(st.states, pageId) ? st.states[pageId] : null;
+    return s === 'upcoming' || s === 'hidden';
+  }
+
+  // The test date that counts for a kid's page ('YYYY-MM-DD' or null): the parent's date on this device (the kid store's
+  // testDates), else the plan's `test` (planTest on the plan set by usePlan; none while it is pending). A fallback that is
+  // never stored. `kid` is the kid store when the caller holds one already (read instead of storage). Never throws.
+  function testDateFor(kidKey, pageId, kid) {
+    try {
+      if (!kidKeyOk(kidKey) || !pageIdOk(pageId)) return null;
+      const d = getOwn(isObj(kid) ? kid : kidStore(kidKey), 'testDates');
+      if (isObj(d) && own(d, pageId) && validDay(d[pageId])) return d[pageId];
+      return knownPlan === PLAN_PENDING ? null : planTest(knownPlan, kidKey, pageId);
+    } catch { return null; }
+  }
+
   const Rewards = {
     EXCLUDED, pushResult, rowValue, starsFor, bumpBest, countedRows, pageStars, pagePct,
     dayKey, isoWeek, addDays, newKid, logAnswer, logStars, streak, level, jar, daysUntil,
     BADGES, buildQuest, questStatus, markLow, checkBadges,
     KEY_RE, exportCode, parseCode, mergeAll,
     useStorage, load, save, kidStore, saveKid, family, saveFamily, manifests,
-    onPageOpen, ensureQuest, onAnswer, onRoundEnd, onBoss, onJarFull, kidStars, totalStars, jarFill, kidStarsSince, exportAll, importCode, previewImport, weekly,
-    bossRound, bossPass, BOSSES, bossFor,
+    onPageOpen, ensureQuest, dayQuest, usePlan, PLAN_PENDING, onAnswer, onRoundEnd, onBoss, onJarFull, kidStars, totalStars, jarFill, kidStarsSince, exportAll, importCode, previewImport, weekly,
+    bossRound, bossPass, bossHearts, bossOver, bossTaunt, BOSSES, bossFor, nextTab, bossUnlock, planState, planTest, planBanner,
+    unlockPage, lockPage, testDateFor,
   };
   if (typeof window !== 'undefined') window.Rewards = Rewards;
   if (typeof module !== 'undefined' && module.exports) module.exports = Rewards;

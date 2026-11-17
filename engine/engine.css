@@ -15,8 +15,15 @@ h1{font-size:clamp(22px,4vw,32px);margin:0 0 4px;font-weight:800;letter-spacing:
 .sub{color:var(--muted);margin:0}
 nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
 .tabs{display:flex;gap:6px;overflow-x:auto;max-width:980px;margin:0 auto;padding:10px 14px;scrollbar-width:none}
-.tabs button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:999px;font:600 14px Commissioner,sans-serif;cursor:pointer}
+.tabs button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:999px;font:600 14px Commissioner,sans-serif;cursor:pointer;min-height:44px}
 .tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+/* tab groups (engine.js _groupTabs): the wrapper only names the group for screen readers and lays out as if absent;
+   .tabhead keeps the label on the same row as the group's first tab */
+.tabgrp{display:contents}
+.tabhead{display:inline-flex;flex:0 0 auto;align-items:center;gap:6px}
+.tablbl{font:800 13px/28px Commissioner,sans-serif;color:var(--muted);white-space:nowrap;padding:0 2px 0 4px}
+.tabgrp~.tabgrp .tablbl{margin-left:12px}
+.tabs.grouped>button[data-t="parent"]{margin-left:12px}
 main{max-width:980px;margin:0 auto;padding:18px 14px 60px}
 section{display:none}section.on{display:block}
 h2{font-size:22px;margin:4px 0 12px}
@@ -28,6 +35,9 @@ h3{font-size:17px;margin:18px 0 8px}
 .btn{border:0;background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font:700 15px Commissioner,sans-serif;cursor:pointer}
 .btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
 .btn.ok{background:var(--ok)}.btn.bad{background:var(--bad)}
+/* self-rating "not yet": amber, not the red error style; !important because the kit rule
+   body.themed .btn:not(.ghost):not(.ok):not(.bad) in engine-content.css would repaint it */
+.btn.later{background:var(--m-soft) !important;color:var(--ink);box-shadow:inset 0 0 0 2px var(--m)}
 .btn:disabled{opacity:.45;cursor:default}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .muted{color:var(--muted)}
@@ -58,6 +68,20 @@ td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
 .opt.right{border-color:var(--ok);background:var(--ok-soft)}
 .opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
 .expl{margin-top:10px;padding:12px 14px;border-radius:12px;background:#f3f1ea;font-size:15px}
+/* end-of-round review (engine.js _reviewHtml, _endHtml; also the final boss): what was missed, the right answer marked with
+   ✔ and the words «Σωστή απάντηση», and the explanation; the retry buttons sit above the list */
+.rv-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
+.rv-btns .btn{min-height:44px}
+.rv-end{margin-top:14px}
+.rv-tag{display:inline-block;margin-bottom:6px;padding:4px 12px;border-radius:999px;background:var(--m-soft);color:var(--ink);font-weight:800;font-size:14px}
+.rv{margin-top:18px;padding-top:4px;border-top:1px solid var(--line);text-align:left}
+.rv-h{margin:10px 0}
+.rv-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.rv-item{min-width:0;padding:10px 12px;border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:12px;background:#fbfaf6;overflow-wrap:anywhere}
+.rv-q{font-weight:700}
+.rv-a{margin-top:4px}
+.rv-ok{color:var(--ok);font-weight:800}
+.rv-ex{margin-top:4px;font-size:15px;color:var(--muted)}
 
 /* Balance */
 select,input[type=number],input[type=text]{font:600 16px Commissioner,sans-serif;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}

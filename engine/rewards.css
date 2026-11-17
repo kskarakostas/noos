@@ -38,6 +38,8 @@ body.rw-snd-on header{padding-right:190px}
 a.rw-task{border-style:dashed}
 a.rw-task:hover{border-color:var(--ink)}
 .rw-task-go{color:var(--v)}
+/* summary chip for the tasks on other pages: secondary to this page's chips */
+.rw-task.rw-more{background:transparent;border-style:dashed;color:var(--muted);font-weight:600}
 
 /* test countdown banner in the header */
 .rw-count{display:flex;width:fit-content;max-width:100%;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;border-radius:14px;background:var(--m-soft);border:1px solid var(--m);font:800 15px Commissioner,sans-serif;color:var(--ink)}
@@ -153,6 +155,8 @@ a.rw-week-a:hover{border-color:var(--ink)}
 .rw-pcard input[type=text]{width:100%}
 .rw-trow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 0;border-top:1px solid var(--line)}
 .rw-tlab{flex:1 1 200px;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.rw-thint{flex:1 1 100%;color:var(--muted);font-weight:700;font-size:13px}
+.rw-cpnow{margin:0;font-weight:800;overflow-wrap:anywhere}
 .rw-ta{width:100%;min-height:96px;padding:10px;border-radius:12px;border:2px solid var(--line);font:13px/1.4 ui-monospace,monospace;color:var(--ink);background:#fff;word-break:break-all;resize:vertical}
 .rw-code{display:flex;flex-direction:column;gap:8px}
 .rw-code:empty{display:none}
@@ -174,7 +178,46 @@ a.rw-week-a:hover{border-color:var(--ink)}
 .rw-boss-hprow{display:flex;align-items:center;gap:10px;margin-top:10px}
 .rw-boss-hp{flex:1;min-width:0;height:16px;border-radius:999px;background:#eeebe2;border:1px solid var(--line);overflow:hidden}
 .rw-boss-hpfill{height:100%;background:linear-gradient(90deg,var(--bad),#f08a5d);transition:width .4s}
+/* boss hearts and taunt (audit L7): the child's hearts sit right of the health bar, in the same row, so the fight screen is
+   no taller; full and empty differ in shape and fill (rewards-ui.js art 'heart'); the lost one pops once. The taunt is a
+   speech line under the explanation. .rw-sr is read by screen readers only (the polite heart announcement). */
+.rw-hearts{display:flex;gap:2px;flex:0 0 auto}
+.rw-heart{display:block;width:26px;height:26px;font-size:24px;line-height:26px;text-align:center;color:#e0435a}
+.rw-heart.is-empty{color:var(--muted)}
+.rw-heart .rw-art{width:100%;height:100%}
+.rw-heart.lost{animation:rwheart .5s ease-out}
+@keyframes rwheart{0%{transform:none}35%{transform:scale(1.35) rotate(-12deg)}70%{transform:scale(.85) rotate(6deg)}100%{transform:none}}
+.rw-boss-taunt{margin:10px 0 0;padding:8px 12px;border-radius:12px;background:var(--m-soft);border:1px solid var(--line);font-weight:700}
+.rw-boss-taunt b{font-weight:800}
+.rw-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* boss review (rewards-ui.js end, practiceEnd; the list itself is the engine's .rv): the retry beside «Νέα μάχη», and the
+   practice label that replaces the boss and its health bar while practising */
+.rw-boss-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.rw-boss-btns .btn{min-height:44px}
+.rw-boss-btns.rv-end{margin-top:14px}
+.rw-boss-practice{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin-top:10px;padding:8px 12px;border-radius:12px;background:var(--m-soft);border:1px dashed var(--m);color:var(--ink);font-weight:800}
+.rw-boss-practice span{font-weight:600;font-size:14px;color:var(--muted)}
+/* character art (rewards-ui.js art): the SVG takes the emoji's box, sized by the font-size the emoji had, so the layout
+   keeps its height (boss face: line-height 1.1); the beaten drawing replaces the rotated emoji; the owl hops once when she cheers */
+.rw-art{display:block;width:1.1em;height:1.1em;overflow:visible}
+.rw-boss-face.rw-art-on.down{transform:none;filter:none}
+.owl.rw-art-on .rw-art{width:1em;height:1em}   /* the owl's line box is 1em tall (line-height:1) */
+.owl.rw-art-on .is-cheer{animation:rwhop .5s ease-out}
+@keyframes rwhop{0%,100%{transform:none}40%{transform:translateY(-12%)}}
 @keyframes rwhit{0%,100%{transform:none}20%{transform:translateX(-8px) rotate(-8deg)}50%{transform:translateX(8px) rotate(8deg)}80%{transform:translateX(-4px)}}
+
+/* page guide (rewards-ui.js guide): the «Συνέχισε» button above the tab row, and the final boss while locked
+   (dimmed tab and phone tile with a lock; it still opens, its screen shows the lock text) */
+.rw-next{max-width:980px;margin:2px auto 8px;padding:0 18px}
+.rw-next-btn{min-height:48px;max-width:100%;border:0;border-radius:14px;padding:10px 18px;background:var(--ink);color:#fff;font:800 16px Commissioner,sans-serif;text-align:left;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.rw-boss-intro .rw-next-btn{margin-top:4px;text-align:center}
+.tabs button.rw-locked:not(.on),#msheet .grid button.rw-locked:not(.on){border-style:dashed;color:var(--muted);background:#f1efe8}
+.tabs button.rw-locked::after,#msheet .grid button.rw-locked>span:last-child::after{content:' 🔒'}
+#msheet .grid button.rw-locked .e,.rw-boss-locked .rw-boss-face{filter:grayscale(1);opacity:.6}
+/* class plan (rewards-ui.js planNote): a calm note on a chapter the class has not started yet, above «Συνέχισε» and the
+   tab row; informative, not an error (ink on light blue, well above 4.5:1); the page keeps working in full */
+.rw-plannote{max-width:944px;margin:4px max(18px,calc((100% - 944px) / 2)) 8px;padding:10px 14px;border-radius:14px;background:var(--v-soft);border:1px solid #b9d3f5;border-left:5px solid var(--v);font:700 15px/1.4 Commissioner,sans-serif;color:var(--ink);overflow-wrap:anywhere}
+.rw-plannote:empty{display:none}
 
 @media(max-width:1100px){
   /* the toggle sits beside 📊 in the bottom bar, so the bar leaves room for both */
@@ -182,6 +225,8 @@ a.rw-week-a:hover{border-color:var(--ink)}
   body.rw-snd-on #mbar{padding-right:156px}
   .rw-quest{margin:2px 0 4px;padding:4px 12px}
   .rw-count{margin-top:6px;font-size:14px}
+  .rw-next{margin:2px 0 6px;padding:0 14px}
+  .rw-plannote{margin:2px 14px 6px;padding:8px 12px;font-size:14px}
 }
 @media(max-width:600px){
   /* hub on a phone: the jar sits above its text, the sound toggle stays in the hero corner */
@@ -195,6 +240,7 @@ a.rw-week-a:hover{border-color:var(--ink)}
   .rw-quest-list{flex-wrap:nowrap;overflow:visible}
   .rw-task{flex:1 1 0;min-width:0;font-size:13px;padding:6px 8px;gap:4px}
   .rw-task-c,.rw-task-go{flex:0 0 auto}
+  .rw-more .rw-task-l{white-space:normal;line-height:1.15}   /* the summary wraps to two lines instead of losing its count */
   /* a burst of toasts must not swallow taps on the header; they still time out on their own */
   .rw-toast{pointer-events:none}
 }
@@ -202,7 +248,7 @@ a.rw-week-a:hover{border-color:var(--ink)}
 @media(prefers-reduced-motion:reduce){
   .rw-toast,#pgBtn.rw-bump{animation:none}
   .rw-jar-fill,.rw-fold>summary::after{transition:none}
-  .rw-boss-face.hit{animation:none}
+  .rw-boss-face.hit,.owl.rw-art-on .is-cheer,.rw-heart.lost{animation:none}
   .rw-boss-hpfill{transition:none}
   /* the hold still takes 2 s; the ring shows full at once as a static highlight */
   .rw-gate.holding .rw-ring .fg{transition:none}
