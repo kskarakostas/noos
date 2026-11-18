@@ -54,6 +54,10 @@
   const TOAST_MS = 2500, CONFETTI_MS = 1200, STAR_MS = 800;
   const R = () => window.Rewards || null;
   const E = () => window.Engine || null;
+  // The schedule's current units (round 2 brief, section 7) come from the device copy of the cloud schedule
+  // (Rewards.scheduleCached; engine/sync.js keeps it). Registered here because the hub and every chapter page load this
+  // file: a page reads the copy with no session, no request and no engine/sync.js.
+  try { if (R() && typeof R().useSchedule === 'function') R().useSchedule(R().scheduleCached); } catch (e) { console.error(e); }
   // PG_ID and PG_ROWS are page-level const globals (not window properties) on hand-written pages, so read them bare.
   /* global PG_ID, PG_ROWS, shuffle */
   const pageId = () => (typeof PG_ID === 'string' ? PG_ID : null);
@@ -239,38 +243,97 @@
     anim.oncancel = () => s.remove();
   }
 
-  /* ---------- class plan (plan.js, timed release): loaded once at runtime, from the page's own folder ---------- */
-  // Chapter pages have no plan.js tag; the hub has one, so window.PLAN (or a failed tag) is already settled there.
-  // A script element is added once and Rewards is told the plan is pending (Rewards.PLAN_PENDING): until it settles no
-  // code path (the strip, an answer) builds the day's quest. Its load or error settles it and hands window.PLAN (undefined
-  // after a 404 or a broken file: no plan) to Rewards.usePlan. PLAN_WAIT_MS is only a safety net for a request that
-  // neither loads nor fails: the quest is then built without the plan, and kept for the day.
+  /* ---------- class plan (plan.js) and unit order (units.js): loaded once at runtime, from the page's own folder ---------- */
+  // Chapter pages have no plan.js or units.js tag (and load neither catalog.js nor manifest.js), so the unit order comes
+  // from units.js (window.NOOS_UNITS, generated from catalog.js). A script element is added once for each file not yet
+  // defined, and Rewards is told the plan is pending (Rewards.PLAN_PENDING): until both settle no code path (the strip, an
+  // answer) builds the day's quest. When the last one loads or fails, window.PLAN and window.NOOS_UNITS (undefined after a
+  // 404 or a broken file: none) go to Rewards.usePlan; without units no subject has a schedule, so there is no banner and
+  // the quest is today's. PLAN_WAIT_MS is only a safety net for a request that neither loads nor fails: the quest is then
+  // built with what has arrived, and kept for the day.
   const PLAN_WAIT_MS = 3000;
-  let planSettled = false, planAsked = false, planUsed = null;   // planUsed: the plan handed to Rewards.usePlan on settling
+  const PLAN_FILES = [['PLAN', 'plan.js'], ['NOOS_UNITS', 'units.js']];
+  // planUsed, unitsUsed: what was handed to Rewards.usePlan on settling
+  let planSettled = false, planAsked = false, planUsed = null, unitsUsed = null;
   const planWaiters = [];
+  function usePlanNow() {
+    planSettled = true;
+    planUsed = window.PLAN; unitsUsed = window.NOOS_UNITS;
+    R().usePlan(planUsed, unitsUsed);
+  }
   function loadPlan(then) {
-    if (!planSettled && typeof window.PLAN !== 'undefined') { planSettled = true; planUsed = window.PLAN; R().usePlan(planUsed); }
+    if (!planSettled && PLAN_FILES.every(([g]) => typeof window[g] !== 'undefined')) usePlanNow();
     if (planSettled) { then(); return; }
     planWaiters.push(then);
     if (planAsked) return;
     planAsked = true;
     R().usePlan(R().PLAN_PENDING);
-    const s = document.createElement('script');
-    let timer = null;
+    const tags = PLAN_FILES.filter(([g]) => typeof window[g] === 'undefined').map(([, src]) => {
+      const s = document.createElement('script');
+      s.src = src;
+      return s;
+    });
+    let left = tags.length, timer = null;
     const settle = () => {
       if (planSettled) return;
-      planSettled = true;
       clearTimeout(timer);
-      s.onload = s.onerror = null;
-      planUsed = window.PLAN;
-      try { R().usePlan(planUsed); } catch (e) { console.error(e); }
+      for (const s of tags) s.onload = s.onerror = null;
+      try { usePlanNow(); } catch (e) { planSettled = true; console.error(e); }
       for (const f of planWaiters.splice(0)) { try { f(); } catch (e) { console.error(e); } }
     };
-    s.onload = s.onerror = settle;
-    s.src = 'plan.js';
+    for (const s of tags) s.onload = s.onerror = () => { s.onload = s.onerror = null; if (--left <= 0) settle(); };
     timer = setTimeout(settle, PLAN_WAIT_MS);
+    for (const s of tags) (document.head || document.documentElement).appendChild(s);
+  }
+  /* ---------- cloud sync (sync-config.js, engine/sync.js): loaded at run time, only when it can be used ---------- */
+  // A chapter page with no Supabase session on the device requests nothing. Otherwise sync-config.js is loaded once
+  // (window.NOOS_SYNC; null, as single copies set it, means off without a request), and only a config with a URL and a
+  // key brings engine/sync.js, which loads the vendored client itself when it needs it. The hub always asks (it shows the
+  // sign-in card). Every failure (404, broken file, empty config) leaves the page as it is today, silently.
+  const SYNC_AUTH = 'noos_sync_auth';   // = Sync.AUTH_KEY, the Supabase session key (tests/sync.test.js checks)
+  let syncAsked = false, syncDone = false;
+  const syncWaiters = [];
+  const syncConfigured = c => !!c && typeof c === 'object' && typeof c.url === 'string' && c.url.trim() !== ''
+    && typeof c.key === 'string' && c.key.trim() !== '';
+  function syncSession() { try { return !!localStorage.getItem(SYNC_AUTH); } catch (e) { return false; } }
+  function addScript(src, done) {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = s.onerror = ev => { s.onload = s.onerror = null; done(ev.type === 'load'); };
     (document.head || document.documentElement).appendChild(s);
   }
+  // then(Sync) runs once sync is booted; never when sync is off.
+  function loadSync(isHub, then) {
+    if (typeof then === 'function') syncWaiters.push(then);
+    const ready = () => { for (const f of syncWaiters.splice(0)) { try { f(window.Sync); } catch (e) { console.error(e); } } };
+    if (syncDone) { if (window.Sync && window.Sync.state().status !== 'off') ready(); return; }
+    if (syncAsked || (!isHub && !syncSession())) return;
+    syncAsked = true;
+    const boot = () => {
+      if (!syncConfigured(window.NOOS_SYNC)) { syncDone = true; return; }
+      const start = ok => {
+        syncDone = true;
+        if (!ok || !window.Sync) return;
+        try { if (window.Sync.boot({ config: window.NOOS_SYNC }).status === 'off') return; } catch (e) { console.error(e); return; }
+        ready();
+      };
+      if (window.Sync) start(true); else addScript('engine/sync.js', start);
+    };
+    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js', boot);
+  }
+  // A chapter page: a pull that changed this page's progress reloads the engine's live store through its own storage
+  // listener (as for a write from another tab), then the strip, countdown and guide follow.
+  function syncPage(sync) {
+    sync.on(ev => {
+      if (!ev || ev.type !== 'pulled' || !Array.isArray(ev.changed)) return;
+      for (const k of ev.changed) {
+        if (!k.startsWith('progress_')) continue;
+        try { window.dispatchEvent(new StorageEvent('storage', { key: k, newValue: JSON.stringify(R().load(k) || {}) })); } catch (e) { console.error(e); }
+      }
+      try { questStrip(); countdown(); guide(); } catch (e) { console.error(e); }
+    });
+  }
+
   // `openProg` is this page's progress as init found it (the state the quest was built from before plan.js existed), passed
   // to the first build after the plan settles only: the page's games may store records (an empty list, for instance) first.
   let openProg = null;
@@ -390,8 +453,9 @@
     b.onclick = () => tab.click();
     return b;
   }
-  // Soft banner on a kid's chapter page the class has not started yet (timed release): Rewards.planBanner on the settled plan,
-  // today and the kid store's `unlocked`; nothing while the plan is pending. It sits above the «Συνέχισε» button and the tab
+  // Soft banner on a kid's chapter page the class has not started yet (per-subject schedule): Rewards.subjectBanner on the
+  // settled units.js and plan.js and the kid store's `unlocked` (the page is in an upcoming or hidden unit of its subject);
+  // nothing while they are pending, nor without units.js. It sits above the «Συνέχισε» button and the tab
   // row, never takes focus, and is a polite live region whose text is set just after it is inserted, so it is announced.
   // Re-evaluated with guide(), so it comes and goes without a reload (an unlock in the hub shows when this tab comes back).
   function planNote(row) {
@@ -400,7 +464,7 @@
     if (eng && eng.kid && pid && planSettled) {
       let unlocked;
       try { unlocked = rw.kidStore(eng.kid).unlocked; } catch (e) { unlocked = undefined; }
-      show = rw.planBanner(planUsed, eng.kid, pid, today(), unlocked);
+      show = rw.subjectBanner(unitsUsed, planUsed, eng.kid, pid, unlocked);
     }
     if (!show) { if (old) old.remove(); return null; }
     if (old) return old;
@@ -437,6 +501,7 @@
 
   /* ---------- celebrate one answer's result ---------- */
   function celebrate(res) {
+    try { if (window.Sync) window.Sync.touch(); } catch (e) { console.error(e); }   // an answer: push after a few seconds
     if (!res || typeof res !== 'object') return;
     const rw = R();
     const badges = Array.isArray(res.badges) ? res.badges : [];
@@ -995,6 +1060,7 @@
         eng.onTab(t => { if (t === 'fboss' && !bossOn) boss(); });
         eng.onTab(() => guide());
       }
+      try { loadSync(false, syncPage); } catch (e) { console.error(e); }   // only with a Supabase session on the device
     }
     inited = true;
     region();
@@ -1005,7 +1071,7 @@
       const b = soundToggle(holder);
       if (b) { b.id = 'rwSnd'; pg.insertBefore(holder, btn); document.body.classList.add('rw-snd-on'); }
     }
-    // A kid page builds the day's quest once the class plan has loaded or failed to load; loadPlan marks it pending first,
+    // A kid page builds the day's quest once plan.js and units.js have loaded or failed to load; loadPlan marks it pending first,
     // so the questStrip below shows only a quest already stored for today.
     const eng = E(), pid = pageId();
     if (eng && eng.kid && pid) {
@@ -1017,5 +1083,5 @@
     guide();
   }
 
-  window.RewardsUI = { TXT, celebrate, confetti, sound, soundToggle, questStrip, countdown, toast, boss, guide, init, art, artMarkup };
+  window.RewardsUI = { TXT, celebrate, confetti, sound, soundToggle, questStrip, countdown, toast, boss, guide, init, art, artMarkup, loadSync };
 })();

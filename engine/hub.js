@@ -1,7 +1,8 @@
 /* Hub view: «Ποιος παίζει;» picker (one kid's block at a time), tile progress and stars, kid header (level, streak),
-   daily quest, sticker album, badge wall, family jar and the parent area (weekly note, class plan, jar settings, test dates, backup code). With ?view=teacher: a teacher view instead
+   daily quest, sticker album, badge wall, family jar and the parent area (weekly note, class plan or, signed in to sync, the schedule editor, jar settings, test dates, cloud sync, backup code). With ?view=teacher: a teacher view instead
    (intro, chapter list, one grade at a time, none of the above).
-   With an active class plan (plan.js, window.PLAN) a kid's tiles are laid out in the plan blocks instead of one grid per subject.
+   A kid's subjects with a schedule (Rewards.kidSubjects: the schedule, else plan.js v2) are laid out by unit in the plan blocks;
+   a subject without one keeps its own grid, as before.
    Reads window.CATALOG, window.Rewards, window.PLAN and, when manifest.js loaded, window.NOOS_MANIFEST; holds no school content (engine/ is published as plain files).
    Every string from storage goes through esc(); links only to files matching FILE_RE. Exposes window.Hub. */
 (function () {
@@ -14,7 +15,6 @@
     stars: 'αστέρια',
     total: n => 'συνολική πρόοδος ' + n + '%',
     levelNext: (s, next) => s + ' / ' + next + ' ⭐',
-    levelTop: 'Ανώτατο επίπεδο!',
     streakTip: n => n + (n === 1 ? ' μέρα' : ' μέρες') + ' στη σειρά με 10 ή περισσότερες απαντήσεις',
     freezeTip: 'Ένα πάγωμα κράτησε το σερί σου αυτή την εβδομάδα',
     questTitle: '🎯 Αποστολή της ημέρας',
@@ -82,6 +82,43 @@
     cpNext: '🔓 Ξεκλείδωσε το επόμενο',
     cpOpened: t => 'Ξεκλειδώθηκε: ' + t,
     cpClosed: t => 'Κλειδώθηκε ξανά: ' + t,
+    cpNone: 'Δεν έχει οριστεί πρόγραμμα, οπότε το παιδί βλέπει όλα τα κεφάλαια. Όρισε το τρέχον κεφάλαιο για να βλέπει μόνο ό,τι κάνει τώρα η τάξη.',
+    // schedule editor (W4): the same card while signed in to sync, saved to the cloud schedule
+    spSub: 'Σε ποιο κεφάλαιο είναι το παιδί σε κάθε μάθημα. Αποθηκεύεται στον λογαριασμό της οικογένειας και ισχύει σε κάθε συνδεδεμένη συσκευή.',
+    spNone: 'Χωρίς πρόγραμμα: το παιδί βλέπει όλα τα κεφάλαια αυτού του μαθήματος.',
+    spBack: '◀ Πίσω',
+    spFwd: 'Μπροστά ▶',
+    spBackTo: (t, s) => 'Πίσω, ' + s + ': ' + t,
+    spFwdTo: (t, s) => 'Μπροστά, ' + s + ': ' + t,
+    spPick: s => 'Διάλεξε κεφάλαιο (' + s + ')',
+    spPickNone: 'Χωρίς πρόγραμμα',
+    spTest: t => 'Διαγώνισμα: ' + t,
+    spSaved: '✔ Αποθηκεύτηκε.',
+    spWait: '⏳ Περιμένει συγχρονισμό.',
+    spFail: '⚠️ Δεν αποθηκεύτηκε ακόμα. Θα ξαναδοκιμάσει μόνο του.',
+    spInTitle: '🗓️ Πρόγραμμα μαθημάτων',
+    spInSub: 'Συνδέσου με τον λογαριασμό της οικογένειας για να ορίζεις από εδώ σε ποιο κεφάλαιο είναι κάθε παιδί, σε κάθε συσκευή. Μέχρι τότε ισχύουν τα κουμπιά ξεκλειδώματος παρακάτω, μόνο σε αυτή τη συσκευή.',
+    // cloud sync card in the parent area (engine/sync.js); absent while sync-config.js is empty
+    syTitle: '☁️ Συγχρονισμός συσκευών',
+    sySub: 'Με τον λογαριασμό της οικογένειας, τα αστέρια, το άλμπουμ, τα παράσημα και το σερί είναι ίδια σε κάθε συσκευή.',
+    syEmail: 'Email',
+    syPass: 'Κωδικός',
+    syShow: 'Εμφάνιση κωδικού',
+    syHide: 'Απόκρυψη κωδικού',
+    sySignIn: 'Σύνδεση',
+    syBusy: 'Σύνδεση…',
+    syEmpty: 'Συμπλήρωσε το email και τον κωδικό.',
+    syBad: 'Λάθος email ή κωδικός. Δοκίμασε ξανά.',
+    syNet: 'Δεν υπάρχει σύνδεση στο διαδίκτυο. Δοκίμασε ξανά σε λίγο.',
+    syOther: 'Η σύνδεση δεν έγινε. Δοκίμασε ξανά σε λίγο.',
+    syExpired: 'Η σύνδεση έληξε. Συνδέσου ξανά για να συνεχιστεί ο συγχρονισμός.',
+    syAs: e => 'Λογαριασμός: ' + e,
+    sySaved: '✔ Όλα συγχρονίστηκαν.',
+    syWait: '⏳ Περιμένει συγχρονισμό.',
+    syFail: '⚠️ Ο συγχρονισμός απέτυχε. Θα ξαναδοκιμάσει μόνος του.',
+    syNoFam: 'Ο λογαριασμός δεν έχει ακόμα οικογένεια. Η πρόοδος μένει μόνο σε αυτή τη συσκευή.',
+    syRetry: 'Δοκίμασε τώρα',
+    syOut: 'Αποσύνδεση λογαριασμού',
     bTitle: '💾 Αντίγραφο ασφαλείας',
     bSub: 'Ο κωδικός μεταφέρει αστέρια, παράσημα, άλμπουμ και σερί σε άλλη συσκευή.',
     bMake: 'Δημιουργία κωδικού',
@@ -210,7 +247,7 @@
       lvl.innerHTML = '<span class="rw-lvl-name">🏅 ' + esc(lv.name) + '</span>'
         + '<span class="rw-lvl-bar" role="progressbar" aria-label="' + esc(lv.name) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '">'
         + '<span style="width:' + pct + '%"></span></span>'
-        + '<span class="rw-lvl-next">' + esc(lv.next === null ? TXT.levelTop : TXT.levelNext(stars, lv.next)) + '</span>';
+        + '<span class="rw-lvl-next">' + esc(TXT.levelNext(stars, lv.next)) + '</span>';
     }
     const se = sec.querySelector('[data-rw="stars"]');
     if (se) se.textContent = '⭐ ' + stars;
@@ -227,24 +264,27 @@
   }
 
   /* ---------- daily quest card ---------- */
-  // With an active class plan the tasks follow it (Rewards.ensureQuest): a current page never opened here still gives tasks
-  // from its build-time manifest, and «Άνοιξε νέο κεφάλαιο» suggests current pages, then done pages, then catalog pages
-  // missing from the plan; never an upcoming or hidden one, nor a page that already has a task.
+  // With any subject on a schedule the tasks follow it (Rewards.ensureQuest): a page of a current unit never opened here
+  // still gives tasks from its build-time manifest, and «Άνοιξε νέο κεφάλαιο» suggests pages of current units, then of done
+  // units, then pages of subjects without a schedule (each in catalog order); never a page of an upcoming or hidden unit,
+  // nor a page that already has a task.
   function quest(sec, k, c) {
     const host = sec.querySelector('[data-rw="quest"]');
     if (!host) return;
-    const rw = c.rw, ks = rw.kidStore(k.key), unlocked = ks && ks.unlocked;   // `unlocked`: slice 4; read as is, planState checks it
-    const plan = rw.planState(window.PLAN, k.key, c.day, unlocked), extra = {};
-    if (plan.active) for (const id of plan.current) { const m = c.opened(id) ? null : c.man(id); if (m) extra[id] = m; }
+    const rw = c.rw, ks = rw.kidStore(k.key), unlocked = ks && ks.unlocked;   // read as is, planSubjects checks it
+    const plan = rw.kidSubjects(window.CATALOG, window.PLAN, k.key, unlocked), extra = {};
+    if (plan.active) for (const id of Object.keys(plan.states)) {
+      if (plan.states[id] !== 'current') continue;
+      const m = c.opened(id) ? null : c.man(id);
+      if (m) extra[id] = m;
+    }
     let pages = pagesOf(k);
-    if (plan.active) {
+    if (plan.active) {   // a stable sort: catalog order inside each rank
       const rank = id => (plan.states[id] === 'current' ? 0 : plan.states[id] === 'done' ? 1 : own(plan.states, id) ? -1 : 2);
-      const at = id => plan.current.concat(plan.done).indexOf(id);
-      pages = pages.filter(x => rank(String(x.p.id)) >= 0)
-        .sort((a, b) => rank(String(a.p.id)) - rank(String(b.p.id)) || at(String(a.p.id)) - at(String(b.p.id)));
+      pages = pages.filter(x => rank(String(x.p.id)) >= 0).sort((a, b) => rank(String(a.p.id)) - rank(String(b.p.id)));
     }
     let st = { tasks: [], allDone: false };
-    rw.usePlan(window.PLAN);   // ensureQuest then reads the plan and the kid store's `unlocked` itself
+    rw.usePlan(window.PLAN, window.CATALOG);   // ensureQuest then reads the plan, the catalog and the kid store's `unlocked` itself
     const q = rw.ensureQuest(k.key, c.day, { extra });   // an empty quest is rebuilt once the kid has a manifest (questFor)
     if (q && Array.isArray(q.tasks)) {
       const lens = {};
@@ -542,35 +582,44 @@
       if (!pages.length) continue;
       box.appendChild(mk('h5', '', String(k.grade || k.key)));
       for (const { p } of pages) {
-        const id = String(p.id || '');
-        if (!id) continue;
-        const row = mk('div', 'rw-trow'), inp = mk('input'), lab = mk('label', 'rw-tlab', (p.emo ? p.emo + ' ' : '') + String(p.title || id));
-        const dates = c.rw.kidStore(k.key).testDates;
-        Object.assign(inp, { type: 'date', id: 'rwT_' + k.key + '_' + id, min: c.day, value: own(dates, id) ? dates[id] : '' });
-        inp.dataset.kid = k.key; inp.dataset.page = id;
-        lab.htmlFor = inp.id;
-        const clr = btn(TXT.tClear, 'rw-tclr'), out = mk('span', 'rw-msg');
-        out.setAttribute('role', 'status');
-        const put = v => {
-          const kid = R().kidStore(k.key);
-          if (v) kid.testDates[id] = v; else delete kid.testDates[id];
-          R().saveKid(k.key, kid);
-          render();   // the tile countdown follows at once
-          syncForms();
-        };
-        inp.onchange = () => {
-          const v = inp.value;
-          if (!v) { put(''); return msg(out, TXT.tCleared); }
-          if (!DATE_RE.test(v) || R().addDays(v, 0) !== v) return msg(out, TXT.tBad, true);
-          put(v); msg(out, TXT.tSaved);
-        };
-        clr.onclick = () => { inp.value = ''; put(''); msg(out, TXT.tCleared); };
-        clr.setAttribute('aria-label', TXT.tClear + ': ' + lab.textContent);
-        row.append(lab, inp, clr, out);
-        box.appendChild(row);
-        step(() => planHint(inp));
+        const row = dateRow(k, p, c, 'rwT_', (p.emo ? p.emo + ' ' : '') + String(p.title || p.id || ''));
+        if (row) box.appendChild(row);
       }
     }
+  }
+  // One test-date row (label, date field, «Καθαρισμός», status) for page `p` of kid `k`, field id pre + kid + '_' + page id.
+  // Used by the test dates card (rwT_) and by the schedule editor for the current unit's pages (rwTS_); both write the kid
+  // store's testDates, and syncForms keeps every field of a page equal. Null for a page without an id.
+  function dateRow(k, p, c, pre, label) {
+    const id = String(p.id || '');
+    if (!id) return null;
+    const row = mk('div', 'rw-trow'), inp = mk('input'), lab = mk('label', 'rw-tlab', label);
+    const dates = c.rw.kidStore(k.key).testDates;
+    Object.assign(inp, { type: 'date', id: pre + k.key + '_' + id, min: c.day, value: own(dates, id) ? dates[id] : '' });
+    inp.dataset.kid = k.key; inp.dataset.page = id;
+    lab.htmlFor = inp.id;
+    const clr = btn(TXT.tClear, 'rw-tclr'), out = mk('span', 'rw-msg');
+    out.setAttribute('role', 'status'); out.id = inp.id + '_msg';
+    const now = () => document.getElementById(out.id) || out;   // the editor's rows are rebuilt by the render a save runs
+    const put = v => {
+      const kid = R().kidStore(k.key);
+      if (v) kid.testDates[id] = v; else delete kid.testDates[id];
+      R().saveKid(k.key, kid);
+      render();   // the tile countdown follows at once
+      syncForms();
+    };
+    inp.onchange = () => {
+      const v = inp.value;
+      if (!v) { put(''); return msg(now(), TXT.tCleared); }
+      if (!DATE_RE.test(v) || R().addDays(v, 0) !== v) return msg(out, TXT.tBad, true);
+      put(v); msg(now(), TXT.tSaved);
+    };
+    clr.onclick = () => { inp.value = ''; put(''); msg(now(), TXT.tCleared); };
+    clr.setAttribute('aria-label', TXT.tClear + ': ' + lab.textContent);
+    clr.id = inp.id + '_clr';
+    row.append(lab, inp, clr, out);
+    step(() => planHint(inp));
+    return row;
   }
 
   function backup(box) {
@@ -627,67 +676,277 @@
     box.append(make, mout, codeWrap, rlab, rta, restore, rout, confirm);
   }
 
-  // One card per kid with an active class plan, right after the weekly notes; rebuilt on every render (a kid whose plan is
-  // not active has none). It names the class's current chapters (planState without the override), lists the chapters
-  // unlocked on this device with «Κλείδωσε ξανά» each, and offers «Ξεκλείδωσε το επόμενο» for the first upcoming page.
-  // One tap each (easily undone); the hub re-renders at once. The card and its status line are reused across rebuilds so
-  // the status is announced, and focus moves to the control that undoes the tap.
-  const planMsgs = new Map();   // kid key -> the card's status node
-  let planFocus = null;         // set by a tap: [id to focus after the rebuild, fallback id]
+  // Cloud sync card (engine/sync.js, loaded by RewardsUI.loadSync), right before the backup card, only while the panel is
+  // open and sync is on. Signed out: the sign-in form (no sign-up, no reset link); signed in: the account, the sync state
+  // and sign out. Rebuilt only when that mode changes, so what the parent typed survives the renders a sync triggers. The
+  // password is read once on submit, the field is emptied at once, and it is never stored, logged or put in a URL (the form
+  // posts nowhere: its inputs have no name, and submit is handled here).
+  const SY_ERR = { empty: 'syEmpty', credentials: 'syBad', network: 'syNet' };
+  let syFocus = false;   // after sign-in or sign-out: focus the rebuilt card's heading
+  // The sign-in form, built into `card`. `o` (optional, for the schedule card): {p: id prefix (default 'rwSync': rwSyncH,
+  // rwSyncExp, rwSyncEmail, rwSyncPass, rwSyncShow, rwSyncGo, rwSyncOut), title, sub, done: run after a sign-in instead of
+  // rebuilding this card}.
+  function syncOut(card, st, o) {
+    const P = (o && o.p) || 'rwSync';
+    const h = mk('h4', '', (o && o.title) || TXT.syTitle), exp = mk('p', 'rw-msg err', st.expired ? TXT.syExpired : '');
+    h.id = P + 'H'; h.tabIndex = -1; exp.id = P + 'Exp';
+    const form = mk('form', 'rw-syform'), email = mk('input'), pass = mk('input'), le = mk('label', 'rw-field', TXT.syEmail), lp = mk('label', 'rw-field', TXT.syPass);
+    form.method = 'post'; form.noValidate = true;
+    Object.assign(email, { type: 'email', id: P + 'Email', autocomplete: 'username', spellcheck: false, inputMode: 'email' });
+    email.setAttribute('autocapitalize', 'none');
+    Object.assign(pass, { type: 'password', id: P + 'Pass', autocomplete: 'current-password', spellcheck: false });
+    pass.setAttribute('autocapitalize', 'none');
+    le.htmlFor = P + 'Email'; lp.htmlFor = P + 'Pass';
+    const show = btn(TXT.syShow, 'rw-syshow'), row = mk('div', 'rw-sypass');
+    show.id = P + 'Show'; show.setAttribute('aria-pressed', 'false'); show.setAttribute('aria-controls', P + 'Pass');
+    const hide = () => { pass.type = 'password'; show.setAttribute('aria-pressed', 'false'); show.textContent = TXT.syShow; };
+    show.onclick = () => { if (pass.type === 'password') { pass.type = 'text'; show.setAttribute('aria-pressed', 'true'); show.textContent = TXT.syHide; } else hide(); };
+    row.append(pass, show);
+    const go = mk('button', 'rw-pbtn rw-confirm', TXT.sySignIn), out = mk('p', 'rw-msg');
+    go.type = 'submit'; go.id = P + 'Go'; out.id = P + 'Out'; out.setAttribute('role', 'status');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (go.disabled || !window.Sync) return;
+      const mail = email.value;
+      let pw = pass.value;
+      pass.value = ''; hide();
+      go.disabled = true; go.textContent = TXT.syBusy; msg(out, '');
+      let r = null;
+      try { r = await window.Sync.signIn(mail, pw); } catch (err) { r = null; }
+      pw = '';
+      go.disabled = false; go.textContent = TXT.sySignIn;
+      if (r && r.ok) { if (o && o.done) step(o.done); else { syFocus = true; step(syncCard); } return; }
+      msg(out, TXT[SY_ERR[r && r.error] || 'syOther'], true);
+      pass.focus();
+    });
+    form.append(le, email, lp, row, go, out);
+    card.append(h, mk('p', 'rw-psub', (o && o.sub) || TXT.sySub), exp, form);
+  }
+  function syncIn(card) {
+    const h = mk('h4', '', TXT.syTitle), as = mk('p', 'rw-psub rw-syas'), line = mk('p', 'rw-msg'), retry = btn(TXT.syRetry), out = btn(TXT.syOut);
+    h.id = 'rwSyncH'; h.tabIndex = -1; as.id = 'rwSyncAs'; line.id = 'rwSyncState'; line.setAttribute('role', 'status');
+    retry.id = 'rwSyncRetry'; out.id = 'rwSyncSignOut';
+    retry.onclick = () => { if (window.Sync) window.Sync.sync(); };
+    out.onclick = async () => {
+      out.disabled = true;
+      try { if (window.Sync) await window.Sync.signOut(); } catch (e) { console.error(e); }
+      out.disabled = false; syFocus = true; step(syncCard);
+    };
+    card.append(h, as, line, retry, out);
+  }
+  function syncCard() {
+    const host = document.getElementById('rwParent'), S = window.Sync;
+    let card = document.getElementById('rwSync');
+    const st = S && pState.open && host && host.dataset.state === 'open' ? S.state() : null;
+    if (!st || st.status === 'off') { if (card) card.remove(); return; }
+    const mode = st.status === 'signedIn' ? 'in' : 'out';
+    if (!card || card.dataset.mode !== mode) {
+      const fresh = mk('div', 'rw-pcard rw-sync');
+      fresh.id = 'rwSync'; fresh.dataset.mode = mode;
+      if (mode === 'in') syncIn(fresh); else syncOut(fresh, st);
+      const backup = document.getElementById('rwBackup');
+      if (card) card.replaceWith(fresh); else if (backup) backup.before(fresh); else host.appendChild(fresh);
+      card = fresh;
+    }
+    if (mode === 'in') {
+      const as = TXT.syAs(st.email || ''), bad = st.sync === 'failed';
+      const text = st.family === 'none' ? TXT.syNoFam : bad ? TXT.syFail : st.sync === 'saved' ? TXT.sySaved : TXT.syWait;
+      const a = document.getElementById('rwSyncAs'), line = document.getElementById('rwSyncState');
+      if (a.textContent !== as) a.textContent = as;
+      if (line.textContent !== text) msg(line, text, bad);
+      document.getElementById('rwSyncRetry').hidden = !bad;
+    } else {
+      const exp = document.getElementById('rwSyncExp'), text = st.expired ? TXT.syExpired : '';
+      if (exp.textContent !== text) exp.textContent = text;
+    }
+    if (syFocus) { syFocus = false; const h = document.getElementById('rwSyncH'); if (h) h.focus(); }
+  }
+
+  // Schedule cards, one per kid with catalog subjects, right after the weekly notes; rebuilt on every render. The mode
+  // follows cloud sync (schedMode):
+  //   device  sync off (empty sync-config.js) or not booted: the class plan card as before, below.
+  //   signin  sync on, signed out: one sign-in card first (the sync card's form, syncOut), then the device cards.
+  //   edit    signed in: the schedule editor (round 2 brief, section 8), below.
+  // Device card, one part per subject: with a schedule (Rewards.kidSubjects) it names the class's current unit, lists the
+  // units unlocked on this device with «Κλείδωσε ξανά» each, and offers «Ξεκλείδωσε το επόμενο» for the upcoming unit (every
+  // page of the unit); without one it says so, with a hint to set it (visible only here: the kid sees all of that subject's
+  // chapters, as before). One tap each (easily undone); the hub re-renders at once.
+  // Editor, one part per subject: the current unit (its base page's chapter label and title, or «Χωρίς πρόγραμμα»), «◀ Πίσω»
+  // and «Μπροστά ▶» (one unit each way; from no schedule forward is the first unit) and a native select of every unit, with
+  // «Χωρίς πρόγραμμα» only while none is set (a schedule row is never deleted); the test date field of each page of the
+  // current unit (dateRow: the kid store's testDates, as in the test dates card); the units unlocked on this device with
+  // «Κλείδωσε ξανά» (they still show to the kid). A change goes to Sync.setSchedule, which writes the device copy at once
+  // and starts a cycle, and the hub re-renders at once. Under the parts, the card's state line (schedLines): saved, waiting
+  // to sync, or failed with «Δοκίμασε τώρα».
+  // Status nodes are reused across rebuilds so they are announced. Focus moves to the control that undoes the tap (device)
+  // or stays on the control used (editor); a render from elsewhere (a pull) puts it back on the element with the same id.
+  const planMsgs = new Map();    // kid key -> the card's action status node
+  const planLines = new Map();   // kid key -> the editor's state line
+  let planFocus = null;          // set by a tap: ids to try after the rebuild, in order (the first enabled one present)
+  let schedBuilt = null;         // the mode the cards were last built in
+  function schedMode() {
+    const S = window.Sync, st = S && typeof S.state === 'function' && typeof S.setSchedule === 'function' ? S.state() : null;
+    return !st || st.status === 'off' ? 'device' : st.status === 'signedIn' ? 'edit' : 'signin';
+  }
+  // A unit's name in the editor: its base page's (the page whose id is the unit) chapter label and title.
+  function unitLabel(k, u) {
+    const p = pagesOf(k).map(x => x.p).find(x => String(x.id) === u);
+    return p ? (p.ch ? String(p.ch) + ': ' : '') + String(p.title || u) : u;
+  }
+  function focusFirst(ids) {
+    for (const id of ids) { const e = id && document.getElementById(id); if (e && !e.disabled) { e.focus(); return; } }
+  }
   function planCards(c) {
     let prev = document.getElementById('rwWeeks');
     if (!prev) return;
+    const mode = schedMode(), act = document.activeElement;
+    const keep = act && act.id && act.closest && act.closest('.rw-plancard') ? act.id : null;
+    schedBuilt = mode;
+    let sin = document.getElementById('rwSchedIn');
+    if (mode === 'signin') {
+      if (!sin) {
+        sin = mk('div', 'rw-pcard rw-schedin'); sin.id = 'rwSchedIn';
+        const first = kidsOf().find(k => Array.isArray(k.subjects) && k.subjects.length);
+        syncOut(sin, window.Sync.state(), { p: 'rwSchedIn', title: TXT.spInTitle, sub: TXT.spInSub,
+          done: () => { planFocus = first ? ['rwPlan_' + first.key + '_h'] : null; render(); } });
+      }
+      if (sin.previousElementSibling !== prev) prev.insertAdjacentElement('afterend', sin);
+      prev = sin;
+    } else if (sin) sin.remove();
     for (const k of kidsOf()) {
-      const cid = 'rwPlan_' + k.key, ks = c.rw.kidStore(k.key), U = ks.unlocked;
-      const st = c.rw.planState(window.PLAN, k.key, c.day, U);
+      const cid = 'rwPlan_' + k.key, subs = Array.isArray(k.subjects) ? k.subjects : [];
       let card = document.getElementById(cid);
-      if (!st.active) { if (card) card.remove(); planMsgs.delete(k.key); continue; }
-      const cls = c.rw.planState(window.PLAN, k.key, c.day, {});
+      if (!subs.length) { if (card) card.remove(); planMsgs.delete(k.key); planLines.delete(k.key); continue; }
+      const U = c.rw.kidStore(k.key).unlocked, st = c.rw.kidSubjects(window.CATALOG, window.PLAN, k.key, U);
       const names = new Map(pagesOf(k).map(({ p }) => [String(p.id), (p.emo ? p.emo + ' ' : '') + String(p.title || p.id)]));
       const name = id => names.get(id) || id;
       if (!card) { card = mk('div', 'rw-pcard rw-plancard'); card.id = cid; }
+      card.dataset.mode = mode;
       if (card.previousElementSibling !== prev) prev.insertAdjacentElement('afterend', card);
       prev = card;
       let out = planMsgs.get(k.key);
       if (!out) { out = mk('p', 'rw-msg'); out.setAttribute('role', 'status'); planMsgs.set(k.key, out); }
       const h = mk('h4', '', TXT.cpTitle(String(k.grade || k.key)));
       h.tabIndex = -1; h.id = cid + '_h';
-      card.replaceChildren(h, mk('p', 'rw-psub', TXT.cpSub), mk('p', 'rw-cpnow', TXT.cpNow(cls.current.map(name).join(', '))));
-      const mine = Object.keys(st.states).filter(id => own(U, id));
-      if (mine.length) {
-        card.appendChild(mk('p', 'rw-week-wh', TXT.cpMine));
-        for (const id of mine) {
-          const row = mk('div', 'rw-trow'), lock = btn(TXT.cpLock);
-          lock.id = cid + '_lock_' + id;
-          lock.setAttribute('aria-label', TXT.cpLockOf(name(id)));
-          lock.onclick = () => {
-            if (R().lockPage(k.key, id)) msg(out, TXT.cpClosed(name(id)));
-            planFocus = [cid + '_next', h.id];
-            render();
-          };
-          row.append(mk('span', 'rw-tlab', name(id)), lock);
-          card.appendChild(row);
-        }
-      }
-      const next = st.upcoming[0];
-      if (next) {
-        const is = mk('p', 'rw-psub', TXT.cpNextIs(name(next))), go = btn(TXT.cpNext);
-        is.id = cid + '_nextis'; go.id = cid + '_next';
-        go.setAttribute('aria-describedby', is.id);
-        go.onclick = () => {
-          if (R().unlockPage(k.key, next)) msg(out, TXT.cpOpened(name(next)));
-          planFocus = [cid + '_lock_' + next, h.id];
-          render();
-        };
-        card.append(is, go);
+      card.replaceChildren(h, mk('p', 'rw-psub', mode === 'edit' ? TXT.spSub : TXT.cpSub));
+      for (const s of subs) {
+        const e = own(st.subjects, s.key) ? st.subjects[s.key] : null, sid = cid + '_' + s.key, box = mk('div', 'rw-cpsubj');
+        box.id = sid;
+        box.appendChild(mk('h5', '', String(s.name || s.key)));
+        card.appendChild(box);
+        if (mode === 'edit' && e) { editPart(box, c, k, s, e, sid, h, name); continue; }
+        if (!e || !e.active) { box.appendChild(mk('p', 'rw-psub rw-cphint', TXT.cpNone)); continue; }
+        box.appendChild(mk('p', 'rw-cpnow', TXT.cpNow(name(e.current))));
+        unlockedPart(box, k, s, e, sid, h, out, name, true);
       }
       card.appendChild(out);
+      if (mode === 'edit') {
+        let line = planLines.get(k.key);
+        if (!line) { line = mk('p', 'rw-msg'); line.setAttribute('role', 'status'); planLines.set(k.key, line); }
+        line.id = cid + '_state';
+        const retry = btn(TXT.syRetry);
+        retry.id = cid + '_retry'; retry.hidden = true;
+        retry.onclick = () => { if (window.Sync) window.Sync.sync(); };
+        card.append(line, retry);
+      }
     }
-    if (planFocus) {
-      const f = document.getElementById(planFocus[0]) || document.getElementById(planFocus[1]);
-      planFocus = null;
-      if (f) f.focus();
+    schedLines();
+    if (planFocus) { const f = planFocus; planFocus = null; focusFirst(f); }
+    else if (keep && document.activeElement !== document.getElementById(keep)) focusFirst([keep]);
+  }
+  // The units after the class unit that are unlocked on this device, each with «Κλείδωσε ξανά»; then, with `next`, the
+  // upcoming unit with «Ξεκλείδωσε το επόμενο».
+  function unlockedPart(box, k, s, e, sid, h, out, name, next) {
+    const units = unitsIn(s, e), state = u => e.states[units.get(u)[0]];
+    const mine = [...units.keys()].filter(u => u !== e.current && state(u) === 'current');   // unlocked on this device
+    if (mine.length) box.appendChild(mk('p', 'rw-week-wh', TXT.cpMine));
+    for (const u of mine) {
+      const row = mk('div', 'rw-trow'), lock = btn(TXT.cpLock);
+      lock.id = sid + '_lock_' + u;
+      lock.setAttribute('aria-label', TXT.cpLockOf(name(u)));
+      lock.onclick = () => {
+        let changed = false;
+        for (const id of units.get(u)) changed = R().lockPage(k.key, id) || changed;
+        if (changed) msg(out, TXT.cpClosed(name(u)));
+        planFocus = [sid + '_next', sid + '_fwd', h.id];
+        render();
+      };
+      row.append(mk('span', 'rw-tlab', name(u)), lock);
+      box.appendChild(row);
     }
+    const up = next ? [...units.keys()].find(u => state(u) === 'upcoming') : undefined;
+    if (up === undefined) return;
+    const is = mk('p', 'rw-psub', TXT.cpNextIs(name(up))), go = btn(TXT.cpNext);
+    is.id = sid + '_nextis'; go.id = sid + '_next';
+    go.setAttribute('aria-describedby', is.id);
+    go.onclick = () => {
+      let changed = false;
+      for (const id of units.get(up)) changed = R().unlockPage(k.key, id) || changed;
+      if (changed) msg(out, TXT.cpOpened(name(up)));
+      planFocus = [sid + '_lock_' + up, h.id];
+      render();
+    };
+    box.append(is, go);
+  }
+  // One subject of the editor (see planCards). `e` is the subject's kidSubjects entry (units listed even when inactive).
+  function editPart(box, c, k, s, e, sid, h, name) {
+    const sname = String(s.name || s.key), list = Array.isArray(e.units) ? e.units : [];
+    const cur = e.active && list.includes(e.current) ? e.current : null, i = cur ? list.indexOf(cur) : -1;
+    const prevU = i > 0 ? list[i - 1] : null, nextU = i + 1 < list.length ? list[i + 1] : null;
+    const now = mk('p', 'rw-cpnow', cur ? unitLabel(k, cur) : TXT.spNone);
+    now.id = sid + '_now';
+    const nav = mk('div', 'rw-spnav'), back = btn(TXT.spBack), fwd = btn(TXT.spFwd);
+    const lab = mk('label', 'rw-field', TXT.spPick(sname)), sel = mk('select', 'rw-spsel');
+    back.id = sid + '_back'; fwd.id = sid + '_fwd'; sel.id = sid + '_pick'; lab.htmlFor = sel.id;
+    back.disabled = !prevU; fwd.disabled = !nextU;
+    if (prevU) back.setAttribute('aria-label', TXT.spBackTo(unitLabel(k, prevU), sname));
+    if (nextU) fwd.setAttribute('aria-label', TXT.spFwdTo(unitLabel(k, nextU), sname));
+    const go = (u, ids) => {
+      if (window.Sync && typeof window.Sync.setSchedule === 'function') window.Sync.setSchedule(k.key, s.key, u);
+      planFocus = ids;
+      render();   // the kid's blocks follow at once
+    };
+    back.onclick = () => { if (prevU) go(prevU, [back.id, fwd.id, sel.id, h.id]); };
+    fwd.onclick = () => { if (nextU) go(nextU, [fwd.id, back.id, sel.id, h.id]); };
+    const opt = (value, text) => { const o = mk('option', '', text); o.value = value; return o; };
+    if (!cur) sel.appendChild(opt('', TXT.spPickNone));
+    for (const u of list) sel.appendChild(opt(u, unitLabel(k, u)));
+    sel.value = cur || '';
+    sel.onchange = () => { if (sel.value && sel.value !== cur) go(sel.value, [sel.id, h.id]); };
+    nav.append(back, fwd);
+    box.append(now, nav, lab, sel);
+    if (!cur) return;
+    const pages = new Map(pagesOf(k).map(({ p }) => [String(p.id), p]));
+    for (const id of unitsIn(s, e).get(cur) || []) {
+      const p = pages.get(id), row = p ? dateRow(k, p, c, 'rwTS_', TXT.spTest(name(id))) : null;
+      if (row) box.appendChild(row);
+    }
+    unlockedPart(box, k, s, e, sid, h, planMsgs.get(k.key), name, false);
+  }
+  // The editor cards' state lines: per kid, failed (with «Δοκίμασε τώρα») while an edit waits and the last cycle failed,
+  // waiting while an edit waits, saved once the kid has a schedule in the device copy and nothing waits; empty otherwise.
+  function schedLines() {
+    if (schedBuilt !== 'edit' || !window.Sync || !R()) return;
+    const cache = R().scheduleCache(), st = window.Sync.state();
+    for (const k of kidsOf()) {
+      const line = planLines.get(k.key), retry = document.getElementById('rwPlan_' + k.key + '_retry');
+      if (!line || !line.isConnected) continue;
+      const kc = own(cache.kids, k.key) ? cache.kids[k.key] : {}, es = Object.keys(kc).map(x => kc[x]);
+      const wait = es.some(x => x.pending), bad = wait && st.sync === 'failed';
+      const text = bad ? TXT.spFail : wait ? TXT.spWait : es.length ? TXT.spSaved : '';
+      if (line.textContent !== text || line.classList.contains('err') !== bad) msg(line, text, bad);
+      if (retry) retry.hidden = !bad;
+    }
+  }
+  // A sync state change while the panel is open: the cards are rebuilt when the mode changed (sign-in, sign-out, expiry),
+  // else only the state lines and the sign-in card's expiry note follow.
+  function schedState() {
+    const host = document.getElementById('rwParent');
+    if (!pState.open || !host || host.dataset.state !== 'open') return;
+    if (schedMode() !== schedBuilt) { render(); return; }
+    schedLines();
+    const exp = document.getElementById('rwSchedInExp'), S = window.Sync;
+    if (exp && S) { const t = S.state().expired ? TXT.syExpired : ''; if (exp.textContent !== t) exp.textContent = t; }
   }
 
   function parentView(c) {
@@ -704,10 +963,10 @@
       host.textContent = ''; host.className = 'rw-parent open'; host.dataset.state = 'open';
       const head = mk('div', 'rw-phead'), h = mk('h3', '', TXT.pTitle), close = btn(TXT.pClose, 'rw-pclose');
       h.id = 'rwPTitle'; h.tabIndex = -1;
-      close.onclick = () => { pState.open = false; planMsgs.clear(); render(); const g = host.querySelector('.rw-gate'); if (g) g.focus(); };
+      close.onclick = () => { pState.open = false; planMsgs.clear(); planLines.clear(); render(); const g = host.querySelector('.rw-gate'); if (g) g.focus(); };
       head.append(h, close);
       const weeks = mk('div', 'rw-weeks'), jarBox = mk('div', 'rw-pcard'), tBox = mk('div', 'rw-pcard'), bBox = mk('div', 'rw-pcard');
-      weeks.id = 'rwWeeks';
+      weeks.id = 'rwWeeks'; bBox.id = 'rwBackup';
       // Each block is independent: one that throws must not take the others down.
       step(() => jarSettings(jarBox));
       step(() => testDates(tBox, c));
@@ -718,6 +977,7 @@
     step(() => weeklyNotes(document.getElementById('rwWeeks'), c));
     step(() => planCards(c));
     step(giveState);
+    step(syncCard);
   }
 
   /* ---------- sound toggle in the hero, made once ---------- */
@@ -835,7 +1095,7 @@
     secs.forEach(s => { s.hidden = s.dataset.kid !== cur; });
   }
 
-  /* ---------- class plan layout (plan.js, audit 8.3): «Αυτή την εβδομάδα», «Επανάληψη», «Έρχεται σύντομα» ---------- */
+  /* ---------- schedule layout per subject (round 2 brief, section 7): «Αυτή την εβδομάδα», «Επανάληψη», «Έρχεται σύντομα» ---------- */
   // Pure. Done pages for review, weakest first: a null (never played) score first, then the lowest score; ties keep `ids` order.
   function reviewOrder(ids, score) {
     const s = new Map(ids.map(id => [id, score(id)]));
@@ -844,10 +1104,55 @@
   }
   // Pure. The blocks for one kid from a planState result and the kid's catalog page ids (in catalog order). Only ids with a
   // catalog page are shown; hidden pages are in no list; `rest` holds catalog pages missing from the plan (shown as today).
+  // Not used by the hub since the per-subject layout (subjectBlocks); kept, with its tests, until its removal is decided.
   function planBlocks(st, ids, score) {
     const P = st || {}, has = new Set(ids), S = P.states || {};
     const keep = list => (Array.isArray(list) ? list : []).filter(id => has.has(id));
     return { now: keep(P.current), review: reviewOrder(keep(P.done), score), soon: keep(P.upcoming), rest: ids.filter(id => !own(S, id)) };
+  }
+  // Pure. A catalog subject's units with a state in its kidSubjects entry `e`: Map unitId -> [pageId, ...], both in catalog
+  // order. A page's unit is its `unit` when that is one of e.units (as planSubjects reads it), else its own id; a page
+  // without a state (or already taken by an earlier subject, as `seen` records) is skipped.
+  function unitsIn(s, e, seen) {
+    const out = new Map(), units = e && Array.isArray(e.units) ? e.units : [], S = e && e.states ? e.states : {};
+    for (const p of s && Array.isArray(s.pages) ? s.pages : []) {
+      const id = String(p && p.id);
+      if (!own(S, id) || (seen && seen.has(id))) continue;
+      if (seen) seen.add(id);
+      const u = units.includes(p.unit) ? p.unit : id;
+      if (!out.has(u)) out.set(u, []);
+      out.get(u).push(id);
+    }
+    return out;
+  }
+  // Pure. The per-subject blocks for one kid (round 2 brief, section 7) from a Rewards.kidSubjects result `ps`, the kid's
+  // catalog entry `k` and a page score (0..1, null when never played):
+  //   now:    one group per subject with a schedule, in catalog order: {key, units: [{unit, ids}], go}: the subject's current
+  //           units (the class unit and any unlocked on the device), each with its pages, in catalog order; `go` is the first
+  //           of those pages whose score is below 1 (unfinished), else null
+  //   review: the pages of done units across subjects, weakest first (reviewOrder; ties keep catalog order)
+  //   soon:   one teaser per subject with an upcoming unit: {key, unit, id}, `id` the unit's first page; hidden units: nothing
+  //   rest:   the keys of the subjects without a schedule (their tiles stay in their own grid, as today)
+  function subjectBlocks(ps, k, score) {
+    const subs = ps && ps.subjects && typeof ps.subjects === 'object' ? ps.subjects : {};
+    const out = { now: [], review: [], soon: [], rest: [] }, seen = new Set(), done = [];
+    for (const s of k && Array.isArray(k.subjects) ? k.subjects : []) {
+      const e = s && own(subs, s.key) ? subs[s.key] : null;
+      if (!e || !e.active) { out.rest.push(s && s.key); continue; }
+      const units = unitsIn(s, e, seen), state = u => e.states[units.get(u)[0]], cur = [];
+      for (const [unit, ids] of units) {
+        if (state(unit) === 'current') cur.push({ unit, ids });
+        else if (state(unit) === 'done') done.push(...ids);
+      }
+      if (cur.length) {
+        const go = cur.flatMap(x => x.ids).find(id => !(score(id) >= 1));
+        out.now.push({ key: s.key, units: cur, go: go === undefined ? null : go });
+      }
+      const up = [...units.keys()].find(u => state(u) === 'upcoming');
+      if (up !== undefined) out.soon.push({ key: s.key, unit: up, id: units.get(up)[0] });
+    }
+    out.review = reviewOrder(done, score);
+    return out;
   }
   // Stars over the page maximum (0..1); null when the tile would say «Δεν ξεκίνησε ακόμα» (never played on this device).
   function pageScore(c, id) {
@@ -880,49 +1185,76 @@
     planSaved.delete(sec);
   }
 
-  // The existing tile elements are moved, not rebuilt, so tiles() and tileCount() keep working on them. Upcoming and hidden
-  // tiles leave the document (kept in planSaved for planRestore); a teaser stands in for each upcoming page.
+  // The existing tile elements are moved, not rebuilt, so tiles() and tileCount() keep working on them. Only the subjects
+  // with a schedule are laid out in the blocks (subjectBlocks); their grids end up empty and are hidden. Tiles of upcoming
+  // and hidden units leave the document (kept in planSaved for planRestore); one teaser per subject stands in for its
+  // upcoming unit. A subject without a schedule keeps its own grid, after the blocks, as today.
   function planKid(sec, k, c) {
     const ks = c.rw.kidStore(k.key);
-    const st = c.rw.planState(window.PLAN, k.key, c.day, ks && ks.unlocked);   // `unlocked`: slice 4; read as is, planState checks it
-    if (!st.active) { planRestore(sec); return; }
+    const ps = c.rw.kidSubjects(window.CATALOG, window.PLAN, k.key, ks && ks.unlocked);   // `unlocked` read as is, planSubjects checks it
+    if (!ps.active) { planRestore(sec); return; }
     const pages = pagesOf(k), byId = new Map(pages.map(x => [String(x.p.id), x]));
-    const b = planBlocks(st, [...byId.keys()], id => pageScore(c, id)), sig = JSON.stringify(b);
+    const b = subjectBlocks(ps, k, id => pageScore(c, id)), sig = JSON.stringify(b);
     const sv = planSaved.get(sec);
     if (sv && sv.sig === sig && planBox(sec)) return;   // same layout as the last render
     planRestore(sec);
     const grids = [...sec.querySelectorAll('.subj .grid')];
     planSaved.set(sec, { grids: grids.map(g => [g, [...g.childNodes]]), sig });
     const tileOf = id => [...sec.querySelectorAll('a.tile[data-id]')].find(t => t.dataset.id === id) || null;
+    const subjOf = key => (Array.isArray(k.subjects) ? k.subjects : []).find(s => s && s.key === key) || {};
     const subjTag = (s, cls, text) => { const e = mk('span', cls, text); e.style.setProperty('--subj', colorOf(s)); return e; };
-    const place = (id, size) => {
+    const place = (id, size, label) => {
       const t = tileOf(id), x = byId.get(id);
-      if (!t) return null;
+      if (!t || !x) return null;
       t.classList.add(size);
-      const emo = t.querySelector('.emo'), lab = subjTag(x.s, 'plan-subj', String(x.s.name || ''));
-      if (emo) emo.insertAdjacentElement('afterend', lab); else t.prepend(lab);
-      if (size === 'plan-big') t.appendChild(subjTag(x.s, 'plan-go', TXT.planGo));
+      if (label) {
+        const emo = t.querySelector('.emo'), lab = subjTag(x.s, 'plan-subj', String(x.s.name || ''));
+        if (emo) emo.insertAdjacentElement('afterend', lab); else t.prepend(lab);
+      }
       return t;
     };
-    const teaser = id => {
-      const { p } = byId.get(id), d = mk('div', 'plan-soon-i'), lock = mk('span', 'plan-lock', '🔒');
-      d.dataset.soon = id;
+    // «Αυτή την εβδομάδα»: the subject's name as its own block shows it today, then each current unit's pages side by side
+    const group = g => {
+      const s = subjOf(g.key), d = mk('div', 'plan-group'), h = mk('h4', 'plan-gh'), dot = mk('span', 'dot');
+      d.dataset.subj = g.key;
+      dot.style.background = colorOf(s);
+      h.append(dot, document.createTextNode(String(s.name || g.key)));
+      d.appendChild(h);
+      for (const x of g.units) {
+        const u = mk('div', 'plan-unit' + (x.ids.length > 1 ? ' multi' : ''));
+        u.dataset.unit = x.unit;
+        u.style.setProperty('--n', String(x.ids.length));
+        for (const id of x.ids) {
+          const t = place(id, 'plan-big', false);
+          if (!t) continue;
+          if (id === g.go) t.appendChild(subjTag(s, 'plan-go', TXT.planGo));
+          u.appendChild(t);
+        }
+        if (u.children.length) d.appendChild(u);
+      }
+      return d.querySelector('a.tile') ? d : null;
+    };
+    const teaser = x => {
+      const p = byId.has(x.id) ? byId.get(x.id).p : {}, s = subjOf(x.key);
+      const d = mk('div', 'plan-soon-i'), txt = mk('span', 'plan-soon-t'), lock = mk('span', 'plan-lock', '🔒');
+      d.dataset.soon = x.unit; d.dataset.subj = x.key;
       lock.setAttribute('role', 'img');
       lock.setAttribute('aria-label', TXT.planLocked);
-      d.append(mk('span', 'emo', String(p.emo || '')), mk('span', 'ttl', String(p.title || '')), lock);
+      txt.append(subjTag(s, 'plan-subj', String(s.name || '')), mk('span', 'ttl', String(p.title || '')));
+      d.append(mk('span', 'emo', String(p.emo || '')), txt, lock);
       return d;
     };
-    const block = (cls, title, items) => {
-      const d = mk('div', 'plan-block ' + cls), g = mk('div', 'plan-grid');
+    const block = (cls, title, items, inner) => {
+      const d = mk('div', 'plan-block ' + cls), g = mk('div', inner);
       g.append(...items.filter(Boolean));
       d.append(mk('h3', '', title), g);
       return g.children.length ? d : null;
     };
-    const blocks = [block('plan-now', TXT.planNow, b.now.map(id => place(id, 'plan-big'))),
-      block('plan-review', TXT.planReview, b.review.map(id => place(id, 'plan-small'))),
-      block('plan-soon', TXT.planSoon, b.soon.map(teaser))].filter(Boolean);
-    const rest = new Set(b.rest);
-    for (const t of [...sec.querySelectorAll('.subj .grid a.tile[data-id]')]) if (!rest.has(t.dataset.id)) t.remove();   // upcoming, hidden
+    const blocks = [block('plan-now', TXT.planNow, b.now.map(group), 'plan-groups'),
+      block('plan-review', TXT.planReview, b.review.map(id => place(id, 'plan-small', true)), 'plan-grid'),
+      block('plan-soon', TXT.planSoon, b.soon.map(teaser), 'plan-grid')].filter(Boolean);
+    // the tiles still in a grid with a state belong to upcoming and hidden units (current and done ones were moved above)
+    for (const t of [...sec.querySelectorAll('.subj .grid a.tile[data-id]')]) if (own(ps.states, t.dataset.id)) t.remove();
     for (const g of grids) {
       const subj = g.closest('.subj');
       if (subj && !g.querySelector('a.tile[data-id]')) subj.hidden = true;
@@ -941,17 +1273,33 @@
     }
   }
 
+  // Cloud sync on the hub: sync-config.js is requested once; with a URL and key, engine/sync.js boots (and pulls when a
+  // session exists). A pull that changed stores or the schedule re-renders the hub; every other sync event refreshes the
+  // sync card and the schedule cards' state (schedState: a rebuild only when signing in or out changed their mode).
+  let syncAsked = false;
+  function syncLoad() {
+    if (syncAsked || !UI() || typeof UI().loadSync !== 'function') return;
+    syncAsked = true;
+    UI().loadSync(true, S => {
+      S.on(ev => { if (ev && ev.type === 'pulled') render(); else { step(syncCard); step(schedState); } });
+      step(syncCard);   // the panel may be open already
+      step(schedState);
+    });
+  }
+
   function render() {
     if (TEACH) { step(teacherView); return; }   // no jar, level, stars, streak, quest, album, badges, parent area or sound
     step(whoView);   // before jarView, which sits the jar after the shown block
     const rw = R();
     if (!rw) return;
+    step(syncLoad);
+    step(() => { if (window.Sync) window.Sync.touch(); });   // a parent's change (jar, test date, unlock, restore): push soon
     let c = null;
     step(() => { c = context(rw); });
     if (!c) return;
     let totals = {};
     step(soundOnce);
-    step(() => rw.usePlan(window.PLAN));   // before tiles: the tile countdown falls back to the plan's test date (testDateFor)
+    step(() => rw.usePlan(window.PLAN, window.CATALOG));   // before tiles: the tile countdown falls back to the plan's test date (testDateFor)
     step(() => planView(c));   // before tiles: the kid totals follow the tiles left in the document
     step(() => { totals = tiles(c); });
     step(() => jarView(c));   // before the badge walls, so a helper badge shows at once
@@ -967,5 +1315,5 @@
     step(() => parentView(c));
   }
 
-  window.Hub = { render, esc, TXT, teacher: () => TEACH, context, reviewOrder, planBlocks };   // context, reviewOrder, planBlocks: for tests
+  window.Hub = { render, esc, TXT, teacher: () => TEACH, context, reviewOrder, planBlocks, subjectBlocks };   // context and the block helpers: for tests
 })();

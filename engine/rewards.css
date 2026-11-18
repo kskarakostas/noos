@@ -150,13 +150,28 @@ a.rw-hq-task:hover{border-color:var(--ink)}
 a.rw-week-a:hover{border-color:var(--ink)}
 .rw-week-a small{color:var(--muted);font-weight:600}
 .rw-field{font-weight:800;font-size:14px}
-.rw-pcard input[type=number],.rw-pcard input[type=text],.rw-pcard input[type=date]{min-height:48px;padding:8px 12px;border-radius:12px;border:2px solid var(--line);font:600 17px Commissioner,sans-serif;color:var(--ink);background:#fff;max-width:100%}
+.rw-pcard input[type=number],.rw-pcard input[type=text],.rw-pcard input[type=date],.rw-pcard input[type=email],.rw-pcard input[type=password]{min-height:48px;padding:8px 12px;border-radius:12px;border:2px solid var(--line);font:600 17px Commissioner,sans-serif;color:var(--ink);background:#fff;max-width:100%}
 .rw-pcard input[type=number]{width:140px}
 .rw-pcard input[type=text]{width:100%}
+/* cloud sync card (hub.js syncCard) */
+.rw-pcard input[type=email]{width:100%}
+.rw-syform{display:flex;flex-direction:column;gap:8px;min-width:0}
+.rw-sypass{display:flex;flex-wrap:wrap;gap:8px}
+.rw-pcard .rw-sypass input{flex:1 1 180px;min-width:0}
+.rw-syas{overflow-wrap:anywhere}
 .rw-trow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 0;border-top:1px solid var(--line)}
 .rw-tlab{flex:1 1 200px;min-width:0;font-weight:700;overflow-wrap:anywhere}
 .rw-thint{flex:1 1 100%;color:var(--muted);font-weight:700;font-size:13px}
 .rw-cpnow{margin:0;font-weight:800;overflow-wrap:anywhere}
+/* class plan card (hub.js planCards): one part per subject */
+.rw-cpsubj{display:flex;flex-direction:column;gap:8px;min-width:0;padding-top:8px;border-top:1px solid var(--line)}
+.rw-cpsubj h5{margin:0}
+.rw-cphint{overflow-wrap:anywhere}
+/* schedule editor (hub.js editPart): back and forward side by side, the unit picker full width */
+.rw-spnav{display:flex;flex-wrap:wrap;gap:8px}
+.rw-spnav .rw-pbtn{flex:1 1 120px}
+.rw-pcard select{min-height:48px;width:100%;max-width:100%;padding:8px 12px;border-radius:12px;border:2px solid var(--line);font:600 16px Commissioner,sans-serif;color:var(--ink);background:#fff}
+.rw-pcard select:focus-visible{outline:3px solid #4f46e5;outline-offset:2px}
 .rw-ta{width:100%;min-height:96px;padding:10px;border-radius:12px;border:2px solid var(--line);font:13px/1.4 ui-monospace,monospace;color:var(--ink);background:#fff;word-break:break-all;resize:vertical}
 .rw-code{display:flex;flex-direction:column;gap:8px}
 .rw-code:empty{display:none}

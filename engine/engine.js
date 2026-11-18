@@ -663,10 +663,12 @@ Engine._makePG=function(){return (function(){
     put(k,obj){S[k]=obj;save();render()},
     get(k){return S[k]},
     store(){return S},
-    /* clears ok, n, r, list and total; keeps best, hi, low and the whole _boss trophy; S stays the same object */
-    reset(){Object.keys(S).forEach(k=>{const s=S[k];if(k==='_boss'&&s&&typeof s==='object')return;const keep={};
+    /* clears ok, n, r, list and total; keeps best, hi, low and the whole _boss trophy; S stays the same object; then stamps
+       S._reset with the reset time (rewards.js RESET), so a sync or backup merge never brings the cleared answers back */
+    reset(){const at=window.Rewards&&Rewards.resetStamp?Rewards.resetStamp(S):new Date().toISOString();
+      Object.keys(S).forEach(k=>{const s=S[k];if(k==='_boss'&&s&&typeof s==='object')return;const keep={};
       if(s&&typeof s==='object')['best','hi','low'].forEach(f=>{if(s[f]!==undefined)keep[f]=s[f]});
-      if(Object.keys(keep).length)S[k]=keep;else delete S[k]});save();render()},render
+      if(Object.keys(keep).length)S[k]=keep;else delete S[k]});S._reset={at};save();render()},render
   };
   document.getElementById('pgBtn').onclick=e=>{e.stopPropagation();document.getElementById('pg').classList.toggle('open')};
   document.getElementById('pgPanel').onclick=e=>e.stopPropagation();

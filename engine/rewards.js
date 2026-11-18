@@ -16,7 +16,22 @@
   const MASTERED = 0.9;    // row value of 3 stars; the weekly note lists only rows under it
   const EARLY_BEFORE = 8 * 60 + 30;  // 'early' badge: minutes after local midnight
   const COMEBACK_DAYS = 7;           // 'comeback' badge: days since the previous active day
-  const LEVELS = [[0, 'Μαθητευόμενος'], [15, 'Εξερευνητής'], [40, 'Ειδικός'], [80, 'Θρύλος']];
+  // Level ladder (decision D9), open-ended: [first star count, name] for levels 1 to 10, then one more level every
+  // LEVEL_STEP stars, named after the last entry plus the level number («Θρύλος 11», «Θρύλος 12», ...).
+  // The names are provisional: K. S. Karakostas edits them (and the thresholds) here, and only here.
+  const LEVELS = [
+    [0, 'Μαθητευόμενος'],   // 1
+    [15, 'Εξερευνητής'],    // 2
+    [40, 'Ειδικός'],        // 3
+    [80, 'Ιχνηλάτης'],      // 4
+    [130, 'Εφευρέτης'],     // 5
+    [190, 'Σοφός'],         // 6
+    [260, 'Δάσκαλος'],      // 7
+    [340, 'Πρωταθλητής'],   // 8
+    [430, 'Ήρωας'],         // 9
+    [530, 'Θρύλος'],        // 10
+  ];
+  const LEVEL_STEP = 120;   // stars per level above the last entry
 
   function pushResult(rec, ok) {
     rec.n = (rec.n || 0) + 1;
@@ -149,12 +164,25 @@
     return { count, frozen };
   }
 
+  // { idx (0-based level), name, next (star count of the next level, always a number), frac (0..1, below 1) }.
+  // Only a number or a numeric string counts; anything else, negative or not finite is 0 stars. Above
+  // MAX_SAFE_INTEGER the count is capped so the arithmetic stays exact; there is no loop over the tail.
   function level(stars) {
-    const s = Math.max(0, Number(stars) || 0);
-    let idx = 0;
-    LEVELS.forEach((l, i) => { if (s >= l[0]) idx = i; });
-    const next = idx + 1 < LEVELS.length ? LEVELS[idx + 1][0] : null;
-    return { idx, name: LEVELS[idx][1], next, frac: next === null ? 1 : (s - LEVELS[idx][0]) / (next - LEVELS[idx][0]) };
+    const n = typeof stars === 'number' || typeof stars === 'string' ? Number(stars) : NaN;
+    const s = Number.isFinite(n) && n > 0 ? Math.min(n, Number.MAX_SAFE_INTEGER) : 0;
+    const last = LEVELS.length - 1, top = LEVELS[last][0];
+    let idx = 0, base;
+    if (s >= top) {
+      const k = Math.floor((s - top) / LEVEL_STEP);
+      idx = last + k; base = top + k * LEVEL_STEP;
+    } else {
+      LEVELS.forEach((l, i) => { if (s >= l[0]) idx = i; });
+      base = LEVELS[idx][0];
+    }
+    const next = idx < last ? LEVELS[idx + 1][0] : base + LEVEL_STEP;
+    const frac = (s - base) / (next - base);
+    return { idx, name: idx > last ? LEVELS[last][1] + ' ' + (idx + 1) : LEVELS[idx][1], next,
+      frac: frac >= 0 && frac < 1 ? frac : 0 };
   }
 
   function jar(totalStars, fam) {
@@ -202,7 +230,7 @@
   // A candidate without a valid page file gives a task without a `file` key, so the task survives JSON unchanged.
   // Class plan (candidates carry `tier`, see questCands): the weakest current-page rows fill QUEST_TASKS minus one slot, the
   // weakest done-page row takes that slot (a review task), and when no done page has a candidate all slots go to current
-  // pages. Slots current pages cannot fill go to done pages, then to pages missing from the plan (tier 'free'). Tasks are
+  // pages. Slots current pages cannot fill go to done pages, then to pages without a schedule (tier 'free'). Tasks are
   // listed in that order. Without any `tier` the selection is the plain weakest-first one.
   const questTarget = c => {
     if (c.type === 'hit') return QUEST_HITS;
@@ -365,11 +393,53 @@
   const FAMILY_T = { launch: validDay, lastExport: validDay, jarBase: nonNeg, jarGoal: x => isNum(x) && x > 0, jarSpent: nonNeg, jarReward: isStr, sound: isBool,
     jarCelebrated: nonNeg };   // the jarSpent value when the hub last celebrated a full jar, so each jar is celebrated once
 
+  // ---- Reset stamps (round 2, W5) ----
+  // «Μηδενισμός» (engine.js api.reset) clears a page's ok, n, r, list and total, keeps best, hi, low and the `_boss` trophy
+  // (so a reset never took stars), and stamps the store: progress_<id>._reset = {at: the reset time}. A '_' key is never a
+  // page row and never counted, so the stamp lives wherever the store lives: localStorage, the page's live store and its
+  // storage listener, the backup code, and the cloud row (engine/sync.js mirrors it to noos.stores.reset_at). A store with
+  // no `_reset` had no reset since W5; an old store or backup code without one loads and imports as before.
+  // Merge rule (mergeProgress): the stamp is an epoch. Same stamp (or none on both sides): the usual never-lowering merge.
+  // Different stamps: the side with the newer stamp wins whole, and of the other side only what a reset keeps survives (each
+  // row's best, hi and low, and the `_boss` trophy), so stars never go down. By design, ok, n, r, list and total gathered on
+  // a device (or in a backup code) that had not yet learned of a newer reset are lost: there is no time per answer to tell
+  // them from the answers the reset cleared.
+  const RESET = '_reset';
+  const RESET_SKEW_MS = 5 * 60 * 1000;   // a stamp this far ahead of the clock it is checked against is capped, see capStamps
+  const STAMP_RE = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6})\d*)?(Z|[+-]\d{2}(?::?\d{2})?)$/;   // = sync.js TS_RE
+  // Microseconds since the epoch of an ISO time with an offset (Date#toISOString, or PostgREST's timestamptz); NaN otherwise.
+  // The same parse as sync.js tsVal (this file cannot load sync.js; tests/sync-two-devices.test.js checks they agree).
+  function stampVal(s) {
+    const m = isStr(s) && s.length <= 40 ? STAMP_RE.exec(s) : null;
+    if (!m) return NaN;
+    let off = m[4] === 'Z' ? 'Z' : m[4].replace(/^([+-]\d{2})(\d{2})$/, '$1:$2');
+    if (/^[+-]\d{2}$/.test(off)) off += ':00';
+    const ms = Date.parse(m[1] + 'T' + m[2] + off);
+    return isNaN(ms) ? NaN : ms * 1000 + Number((m[3] || '').padEnd(6, '0'));
+  }
+  const stampOk = s => !isNaN(stampVal(s));
+  const resetOk = r => isObj(r) && own(r, 'at') && stampOk(r.at);   // the `_reset` row: {at: stamp}, other fields left alone
+  // The store's stamp in microseconds; -Infinity for none.
+  const stampOf = p => (isObj(p) && resetOk(getOwn(p, RESET)) ? stampVal(p[RESET].at) : -Infinity);
+  // The stamp a reset made now puts on `progress`: now, or 1 ms after the stamp it already has when that is not earlier (a
+  // device clock behind the stamp it learned must still make a newer reset).
+  function resetStamp(progress, now) {
+    const t = isNum(now) ? now : Date.now(), prev = stampOf(progress);
+    return new Date(Math.floor(Math.max(t * 1000, prev + 1000) / 1000)).toISOString();
+  }
+
   function storeOk(key, v) {
-    if (key.startsWith('progress_')) return Object.keys(v).every(row => isObj(v[row]) && fieldsOk(v[row], row === '_boss' ? BOSS_T : REC_T));
+    if (key.startsWith('progress_')) return Object.keys(v).every(row => (row === RESET ? resetOk(v[row]) : isObj(v[row]) && fieldsOk(v[row], row === '_boss' ? BOSS_T : REC_T)));
     if (key.startsWith('noos_rows_')) return own(v, 'file') && fieldsOk(v, MANIFEST_T);
     if (key.startsWith('noos_kid_')) return fieldsOk(v, KID_T);
     return fieldsOk(v, FAMILY_T);
+  }
+
+  // Pure, never throws. True when `v` may be stored under `key`: a KEY_RE key, a plain object of a safe shape, and the
+  // per-store field types (the checks parseCode applies to each store of a backup code). For engine/sync.js, which must
+  // drop a cloud row that fails them instead of merging it.
+  function storeValid(key, v) {
+    try { return isStr(key) && KEY_RE.test(key) && isObj(v) && !unsafeShape(v) && storeOk(key, v); } catch { return false; }
   }
 
   // True when any key is __proto__, constructor or prototype, or containers nest deeper than MAX_DEPTH.
@@ -446,7 +516,22 @@
     return out;
   }
 
-  const mergeProgress = (x, y) => unionMap(x, y, (a, b) => (isObj(a) && isObj(b) ? mergeRec(a, b) : isObj(a) ? a : b));
+  // Reset stamps decide first (see RESET above); `rec` merges two records of one row (mergeRec; joinRec for sync).
+  function mergeProgress(x, y, rec = mergeRec) {
+    const sx = stampOf(x), sy = stampOf(y);
+    if (sx === sy) return unionMap(x, y, (a, b) => (isObj(a) && isObj(b) ? rec(a, b) : isObj(a) ? a : b));
+    const [n, o] = sx > sy ? [x, y] : [y, x], out = clone(n);
+    for (const k of keysOf(o)) {
+      const a = getOwn(n, k), b = o[k];
+      if (k === RESET || !isObj(b)) continue;
+      if (k === '_boss') { out[k] = isObj(a) ? rec(a, b) : clone(b); continue; }   // the reset keeps the trophy
+      const r = isObj(a) ? clone(a) : {};
+      for (const f of ['best', 'hi']) if (own(r, f) || own(b, f)) r[f] = Math.max(num(getOwn(r, f)), num(getOwn(b, f)));
+      if (getOwn(b, 'low') === true) r.low = true;
+      if (isObj(a) || Object.keys(r).length) out[k] = r;
+    }
+    return out;
+  }
   const mergeManifest = (x, y) => clone(num(getOwn(y, 'ts')) > num(getOwn(x, 'ts')) ? y : x);
 
   // A quest is never imported (mergeAll drops it from incoming kids): it is rebuilt daily and carries a page file and labels.
@@ -477,19 +562,125 @@
   // Pure. `data` is the full merged state (local keys first, then incoming-only ones); `changed` lists the keys whose merged
   // value differs from local, which are the only ones a caller needs to write. Keys outside KEY_RE and values that are not
   // plain objects are ignored. An incoming kid's quest is dropped (set to null). Merging the same code again changes nothing.
-  function mergeAll(local, incoming) {
+  const mergeAll = (local, incoming) => mergeWith(local, incoming, mergeStore);
+  function mergeWith(local, incoming, one) {
     const L = isObj(local) ? local : {}, I = isObj(incoming) ? incoming : {}, data = {}, changed = [];
     for (const k of [...Object.keys(L), ...Object.keys(I).filter(j => !own(L, j))]) {
       if (!KEY_RE.test(k)) continue;
       const x = isObj(getOwn(L, k)) ? L[k] : null;
       let y = isObj(getOwn(I, k)) ? I[k] : null;
       if (y && k.startsWith('noos_kid_') && own(y, 'quest')) y = { ...clone(y), quest: null };   // never import a quest (it is rebuilt daily)
-      const merged = x && y ? mergeStore(k, x, y) : clone(x || y);
+      const merged = x && y ? one(k, x, y) : clone(x || y);
       if (!merged) continue;
       data[k] = merged;
       if (!same(merged, x)) changed.push(k);
     }
     return { data, changed };
+  }
+
+  // ---- Sync merge (round 2, W5): mergeAll's rules made convergent for engine/sync.js ----
+  // mergeAll keeps the local side on a tie (a backup import must not move what this device holds). Between two devices that
+  // sync, a local tie-break is a loop: each keeps its own value and pushes it back. syncMerge(local, remote, {base}) gives
+  // both devices the same result whatever the order, except for the parent settings it settles three-way:
+  //   progress_*   reset stamps first (mergeProgress), then joinRec per row: the record that carries more wins whole as in
+  //                mergeRec, an empty record (a reset leftover: best, hi, low only) never wins, a hit record wins over a
+  //                list, and a full tie goes to the larger canonical body (best, hi and low left out); best, hi max, low OR.
+  //   noos_kid_*   days: more answers, then more stars, then the larger canonical record; badges, freezes, bosses, bonus:
+  //                the earlier value; questsDone: max (as mergeKid). unlocked and testDates: three-way (settleMap).
+  //   noos_family  jarBase, jarSpent: max (as mergeFamily). jarGoal, jarReward: three-way (settleOne), so the jar's goal and
+  //                reward spread to every device. launch, lastExport, sound, jarCelebrated are per device: sync.js never
+  //                sends them (wire) and the local value stays; any other field: local.
+  // `base` = {key: the settled fields as the server held them when this device last pulled or pushed that key}; a key
+  // without a base (first sign-in, or after a sign-out) takes the cloud's settled fields (a map or value the cloud row
+  // does not have at all stays as on the device; a store with no cloud row goes up whole).
+  const SETTLED = { kid: ['unlocked', 'testDates'], family: ['jarGoal', 'jarReward'] };
+  const settledOf = key => (key.startsWith('noos_kid_') ? SETTLED.kid : key === 'noos_family' ? SETTLED.family : null);
+  // The settled fields of a store, as sync.js keeps them for the next merge; null for a key without any.
+  function syncBase(key, v) {
+    const fs = isStr(key) ? settledOf(key) : null;
+    if (!fs || !isObj(v)) return null;
+    const out = {};
+    for (const f of fs) if (own(v, f)) out[f] = clone(v[f]);
+    return out;
+  }
+  // Sorted-key JSON, as sync.js fingerprints it.
+  function canon(v) {
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+    if (isObj(v)) return '{' + keysOf(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
+    return JSON.stringify(v === undefined ? null : v);
+  }
+  // Compares two rank arrays, then the canonical strings; > 0 when b ranks higher.
+  function rankCmp(ra, rb, ca, cb) {
+    for (let i = 0; i < ra.length; i++) if (rb[i] !== ra[i]) return rb[i] - ra[i];
+    return cb > ca ? 1 : cb < ca ? -1 : 0;
+  }
+  const KEPT = new Set(['best', 'hi', 'low']);
+  const bodyOf = r => { const o = {}; for (const k of keysOf(r)) if (!KEPT.has(k)) o[k] = r[k]; return o; };
+  const recRank = r => [Object.keys(bodyOf(r)).length ? 1 : 0, Array.isArray(getOwn(r, 'list')) ? 0 : 1, ...heft(r)];
+  function joinRec(a, b) {
+    const out = clone(rankCmp(recRank(a), recRank(b), canon(bodyOf(a)), canon(bodyOf(b))) > 0 ? b : a);
+    for (const f of ['best', 'hi']) if (own(a, f) || own(b, f)) out[f] = Math.max(num(getOwn(a, f)), num(getOwn(b, f)));
+    if (getOwn(a, 'low') === true || getOwn(b, 'low') === true) out.low = true;
+    return out;
+  }
+  const dayRank = d => [nOf(d), isObj(d) ? num(getOwn(d, 'stars')) : 0];
+  const joinDay = (a, b) => (rankCmp(dayRank(a), dayRank(b), canon(a), canon(b)) > 0 ? b : a);
+  // Three-way merge of a {id: value} map: an entry changed on one side only (added, changed or removed since `base`) takes
+  // that change; changed on both sides, conflict(local, remote) settles it, and a removal loses to a change.
+  function settleMap(l, r, base, conflict) {
+    const L = isObj(l) ? l : {}, Rm = isObj(r) ? r : {}, out = {};
+    for (const k of new Set([...keysOf(L), ...keysOf(Rm), ...keysOf(base)])) {
+      const lv = getOwn(L, k), rv = getOwn(Rm, k), bv = getOwn(base, k);
+      const v = lv === rv ? lv : lv === bv ? rv : rv === bv ? lv : lv === undefined ? rv : rv === undefined ? lv : conflict(lv, rv);
+      if (v !== undefined) out[k] = clone(v);
+    }
+    return out;
+  }
+  // The same for one value: a change on one side wins; on both sides the local one (it is pushed, and the other device then
+  // finds its own value unchanged since its base and takes it); no base: the cloud's when it has one.
+  function settleOne(l, r, base, f) {
+    if (l === r) return l;
+    if (!isObj(base)) return r !== undefined ? r : l;
+    const bv = getOwn(base, f);
+    return l === bv ? r : l;
+  }
+  // `_w` (kid and family stores): the ids of the last writes of the store, newest first, set by engine/sync.js on each
+  // push; the cloud's list is the row's history, so it always wins.
+  const W = '_w';
+  function joinKid(x, y, base) {
+    const out = clone(x), b = isObj(base) ? base : null;
+    if (own(y, W)) out[W] = clone(y[W]);
+    const maps = { days: joinDay, badges: earliest, freezes: earliest, bosses: earliest, bonus: earliest };
+    for (const f of Object.keys(maps)) if (own(x, f) || own(y, f)) out[f] = unionMap(getOwn(x, f), getOwn(y, f), maps[f]);
+    if (own(x, 'questsDone') || own(y, 'questsDone')) out.questsDone = Math.max(num(getOwn(x, 'questsDone')), num(getOwn(y, 'questsDone')));
+    // unlocked: a page unlocked on both sides keeps the earlier day; lockPage on one device is a removal the other takes
+    // testDates: a date changed on both sides keeps the local one (the last device to sync wins)
+    // no base (first sign-in, or after a sign-out): the cloud's map, so a lock or a removed date made meanwhile stays
+    const rules = { unlocked: earliest, testDates: a => a };
+    for (const f of Object.keys(rules)) {
+      if (!own(x, f) && !own(y, f)) continue;
+      out[f] = b ? settleMap(getOwn(x, f), getOwn(y, f), isObj(getOwn(b, f)) ? b[f] : {}, rules[f]) : clone(own(y, f) ? y[f] : x[f]);
+    }
+    return out;
+  }
+  function joinFamily(x, y, base) {
+    const out = clone(x), b = isObj(base) ? base : null;
+    if (own(y, W)) out[W] = clone(y[W]);
+    for (const f of ['jarBase', 'jarSpent']) if (own(x, f) || own(y, f)) out[f] = Math.max(num(getOwn(x, f)), num(getOwn(y, f)));
+    for (const f of SETTLED.family) {
+      const v = settleOne(getOwn(x, f), getOwn(y, f), b, f);
+      if (v === undefined) delete out[f]; else out[f] = clone(v);
+    }
+    return out;
+  }
+  function syncMerge(local, remote, opts) {
+    const base = isObj(opts) && isObj(opts.base) ? opts.base : {};
+    return mergeWith(local, remote, (k, x, y) => {
+      if (k.startsWith('progress_')) return mergeProgress(x, y, joinRec);
+      if (k.startsWith('noos_kid_')) return joinKid(x, y, getOwn(base, k));
+      if (k === 'noos_family') return joinFamily(x, y, getOwn(base, k));
+      return mergeStore(k, x, y);
+    });
   }
 
   // ---- Storage layer ----
@@ -570,23 +761,25 @@
     for (const id of ids) { kid.badges[id] = day; got.push(id); }
   }
 
-  // The class plan known to this module, set by the page layer (rewards-ui.js when plan.js settles, the hub before its
-  // quest): null or undefined = no plan (as on a fresh module), PLAN_PENDING = plan.js is on its way, anything else is
-  // the plan object as loaded (planState checks it). This file never reads window.
+  // The class plan and the unit catalog known to this module, set by the page layer (rewards-ui.js when plan.js and
+  // units.js settle, the hub before its quest): null or undefined = none (as on a fresh module), PLAN_PENDING (as the
+  // plan) = plan.js or units.js is on its way, anything else is the object as loaded (planSubjects checks it). `units` is
+  // catalog-shaped (window.CATALOG on the hub, window.NOOS_UNITS on a chapter page). This file never reads window.
   const PLAN_PENDING = Object.freeze({ pending: true });
-  let knownPlan = null;
-  function usePlan(plan) { knownPlan = plan === undefined ? null : plan; }
+  let knownPlan = null, knownUnits = null;
+  function usePlan(plan, units) { knownPlan = plan === undefined ? null : plan; knownUnits = units === undefined ? null : units; }
 
   // Quest candidates from the kid's manifests and stored progress (R9): a hit row with fewer than 5 answers (no star
   // possible yet) has value null, so it counts as weakest. A list row carries its stored total (null when unknown).
-  // `opts` = {plan, day, unlocked, extra}, all optional. Only when planState(plan, kidKey, day, unlocked) is active: each
-  // candidate gets `tier` ('current', 'done', or 'free' for a page missing from the plan's order), upcoming and hidden
-  // pages give none, and `extra` ({pageId: manifest}, e.g. the hub's build-time entries) adds the kid's pages that have
-  // no device manifest, checked like a stored one. Inactive: exactly the plain device-manifest candidates.
+  // `opts` = {catalog, plan, unlocked, extra, progress}, all optional. Only when kidSubjects(catalog, plan, kidKey,
+  // unlocked) is active (any subject has a current unit): each candidate gets `tier` ('current' or 'done' by its unit,
+  // 'free' for a page of a subject without a schedule or missing from the catalog), pages of upcoming and hidden units give
+  // none, and `extra` ({pageId: manifest}, e.g. the hub's build-time entries) adds the kid's pages that have no device
+  // manifest, checked like a stored one. Inactive: exactly the plain device-manifest candidates.
   // `progress` ({pageId: progress object}, with or without a plan) is read instead of the stored progress of those pages:
   // the page strip passes its own page's progress as it was at page open, before the page's games stored anything.
   function questCands(kidKey, opts) {
-    const o = isObj(opts) ? opts : {}, st = planState(o.plan, kidKey, o.day, o.unlocked);
+    const o = isObj(opts) ? opts : {}, st = kidSubjects(o.catalog, o.plan, kidKey, o.unlocked);
     const ms = manifests(), cands = [], prog = isObj(o.progress) ? o.progress : {};
     if (st.active && isObj(o.extra)) {
       for (const id of keysOf(o.extra)) {
@@ -621,7 +814,8 @@
   // An empty quest (built before the kid had a manifest) is rebuilt, so a page opened later still gets a quest that day.
   // A stored quest is kept all day, whatever plan is passed later. Without an own `plan` in opts the plan set by usePlan
   // is used; while it is PLAN_PENDING nothing is built (false), so no path builds a planless quest while plan.js is on its
-  // way. Without an own `unlocked` in opts the kid store's `unlocked` is used (slice 4; planState checks it).
+  // way. Without an own `catalog` the units set by usePlan are used. Without an own `unlocked` in opts the kid store's
+  // `unlocked` is used (slice 4; planSubjects checks it).
   function questFor(kid, kidKey, day, opts) {
     if (dayQuest(kid, day)) return false;
     const o = Object.assign({}, isObj(opts) ? opts : {}, { day });
@@ -629,15 +823,17 @@
       if (knownPlan === PLAN_PENDING) return false;
       o.plan = knownPlan;
     }
+    if (!own(o, 'catalog')) o.catalog = knownUnits;
     if (!own(o, 'unlocked')) o.unlocked = getOwn(kid, 'unlocked');
     kid.quest = buildQuest(questCands(kidKey, o), day);
     return true;
   }
 
   // Saves only a rebuilt quest with tasks: an empty one is never kept (questFor rebuilds it), so a kid with no
-  // manifest costs no write on each hub render. `opts` = {plan, unlocked, extra, progress}, see questCands; `plan` and
-  // `unlocked` default to usePlan's plan and the kid store (questFor). The page layer reads window.PLAN and manifest.js and
-  // passes them in; this file never does. While the plan is pending it returns the stored quest (possibly another day's or null).
+  // manifest costs no write on each hub render. `opts` = {catalog, plan, unlocked, extra, progress}, see questCands;
+  // `catalog`, `plan` and `unlocked` default to usePlan's units and plan and the kid store (questFor). The page layer reads
+  // window.PLAN, the catalog or units.js and manifest.js and passes them in; this file never does. While the plan is
+  // pending it returns the stored quest (possibly another day's or null).
   function ensureQuest(kidKey, day, opts) {
     if (!kidKey) return null;
     const kid = kidStore(kidKey);
@@ -841,6 +1037,9 @@
     return sum;
   }
 
+  // Every stored KEY_RE store {key: object}, through the storage layer (memory fallback included). Exported for
+  // engine/sync.js; keys outside KEY_RE (the sync bookkeeping, the Supabase session) never appear here, so never in
+  // exportAll either.
   function localData() {
     const data = {};
     for (const k of storedKeys()) { if (!KEY_RE.test(k)) continue; const v = load(k); if (v) data[k] = v; }
@@ -862,8 +1061,20 @@
 
   // Pure: mergeAll, then the merged family's jarBase is set so the jar shows the fuller of the two jars (never a jar filled
   // with the other device's pre-launch stars). With no family on either side the jar is left to family() to start.
-  function mergeBackup(local, incoming) {
-    const out = mergeAll(local, incoming), fam = getOwn(out.data, 'noos_family');
+  // A code's reset stamps more than RESET_SKEW_MS ahead of this device's clock are taken as now (`now`, ms): a reset cannot
+  // have happened later than the import, and a stamp from a device clock far ahead would outrank every later reset. The
+  // capped `_reset` keeps the code's stamp as `from`, so importing the same code again finds the same reset there and
+  // changes nothing (the cap does not move with the clock).
+  function mergeBackup(local, incoming, now = Date.now()) {
+    const inc = isObj(incoming) ? { ...incoming } : {};
+    for (const k of Object.keys(inc)) {
+      if (!k.startsWith('progress_') || stampOf(inc[k]) === -Infinity) continue;
+      const at = inc[k][RESET].at, mine = getOwn(isObj(local) ? local : {}, k), r = isObj(mine) ? getOwn(mine, RESET) : null;
+      // the stamp this device already capped (it keeps the code's raw stamp in `from`): the same reset, whatever the clock now
+      if (resetOk(r) && r.from === at) inc[k] = { ...inc[k], [RESET]: clone(r) };
+      else if (stampOf(inc[k]) > (now + RESET_SKEW_MS) * 1000) inc[k] = { ...inc[k], [RESET]: { ...inc[k][RESET], at: new Date(now).toISOString(), from: at } };
+    }
+    const out = mergeAll(local, inc), fam = getOwn(out.data, 'noos_family');
     if (!isObj(fam)) return out;
     const want = Math.max(jarFill(local).fill, jarFill(incoming).fill);
     fam.jarBase = Math.max(0, starsIn(out.data).total - num(getOwn(fam, 'jarSpent')) - want);
@@ -1100,11 +1311,162 @@
   }
 
   // The page's default test date in the plan ('YYYY-MM-DD'), or null when absent or malformed. Pure, never throws.
+  // v2 (kids.<kid>.subjects.<key>.pages.<pageId>.test, in any subject of the kid) first, then the old format
+  // (kids.<kid>.pages.<pageId>.test).
   function planTest(plan, kidKey, pageId) {
     try {
-      const k = planKid(plan, kidKey), pg = k ? planPage(k, pageId) : null, t = pg ? getOwn(pg, 'test') : undefined;
+      const k = planKid(plan, kidKey);
+      if (!k) return null;
+      const subs = getOwn(k, 'subjects');
+      if (isObj(subs)) {
+        for (const key of keysOf(subs)) {
+          const s = getOwn(subs, key), pg = isObj(s) ? planPage(s, pageId) : null, t = pg ? getOwn(pg, 'test') : undefined;
+          if (validDay(t)) return t;
+        }
+      }
+      const pg = planPage(k, pageId), t = pg ? getOwn(pg, 'test') : undefined;
       return validDay(t) ? t : null;
     } catch { return null; }
+  }
+
+  /* ---------- per-subject schedule by unit (round 2 brief, section 7) ---------- */
+  const UNIT_UPCOMING = 1;   // units after the current one shown as the upcoming teaser
+  const subjKeyOk = k => isStr(k) && KID_RE.test(k) && !BAD_KEYS.has(k);
+  const subjOff = () => ({ active: false, subjects: {}, states: {} });
+
+  // Pure, never throws, never reads window: the catalog is an argument.
+  //   planSubjects(catalog, plan, kidKey, opts) -> {active, subjects: {subjectKey: entry}, states: {pageId: state}}
+  //   entry = {active, units: [unitId in catalog order], current: unitId or null, states: {pageId: state}}
+  //   state = 'done' | 'current' | 'upcoming' | 'hidden'
+  // Reads only catalog.kids[].key, .subjects[].key, .pages[].id and .pages[].unit (an id-only catalog works too).
+  // Every subject of the kid with a valid key (KID_RE, not __proto__/constructor/prototype) is listed, in catalog order; a later
+  // duplicate key is skipped, and so is a page whose id is invalid or already seen in the kid. A page's unit is its `unit`
+  // when that is a valid id, else its own id; units are ordered by first appearance.
+  // The current unit of a subject: opts.current[subjectKey] (the cloud or cached schedule), else the v2 plan's
+  // kids.<kid>.subjects.<subjectKey>.current; a value that is not a unit of that subject is ignored (the next source counts).
+  // With neither the subject is inactive: states {}, current null, and its pages are absent from the flat `states` (shown
+  // as today). An old-format kid plan (order/current/pages, no `subjects`) gives no current: it is dormant here.
+  // Active: units before the current one are done, the current one current, the first UNIT_UPCOMING later units that are
+  // not current upcoming, the rest hidden; every page of a unit takes the unit's state (D10: versions open with the chapter).
+  // opts.unlocked ({pageId: day}, the kid store's device override): a later unit with an own key for any of its pages is
+  // current too (`current` stays the class unit); a unit the parent skipped stays the teaser, never done. The override
+  // never activates a subject. Top-level `active` is true when any subject is active; `states` merges the active subjects'.
+  function planSubjects(catalog, plan, kidKey, opts) {
+    try {
+      const kids = kidKeyOk(kidKey) && isObj(catalog) ? getOwn(catalog, 'kids') : undefined;
+      const kid = Array.isArray(kids) ? kids.find(k => isObj(k) && getOwn(k, 'key') === kidKey) : undefined;
+      const subs = kid ? getOwn(kid, 'subjects') : undefined;
+      if (!Array.isArray(subs)) return subjOff();
+      const o = isObj(opts) ? opts : {}, sc = getOwn(o, 'current'), ul = getOwn(o, 'unlocked');
+      const sched = isObj(sc) ? sc : {}, U = isObj(ul) ? ul : {};
+      const pk = planKid(plan, kidKey), ps = pk ? getOwn(pk, 'subjects') : undefined, pSubs = isObj(ps) ? ps : {};
+      const out = subjOff(), seen = new Set();
+      for (const s of subs) {
+        const key = isObj(s) ? getOwn(s, 'key') : undefined;
+        if (!subjKeyOk(key) || own(out.subjects, key)) continue;
+        const raw = getOwn(s, 'pages'), units = [], pagesOf = new Map();
+        for (const pg of Array.isArray(raw) ? raw : []) {
+          const id = isObj(pg) ? getOwn(pg, 'id') : undefined;
+          if (!pageIdOk(id) || seen.has(id)) continue;
+          seen.add(id);
+          const pu = getOwn(pg, 'unit'), u = pageIdOk(pu) ? pu : id;
+          if (!pagesOf.has(u)) { pagesOf.set(u, []); units.push(u); }
+          pagesOf.get(u).push(id);
+        }
+        const entry = { active: false, units, current: null, states: {} };
+        out.subjects[key] = entry;
+        const p = getOwn(pSubs, key);
+        const cur = [getOwn(sched, key), isObj(p) ? getOwn(p, 'current') : undefined].find(v => isStr(v) && pagesOf.has(v));
+        if (cur === undefined) continue;
+        const ci = units.indexOf(cur);
+        let soon = 0;
+        units.forEach((u, i) => {
+          const ids = pagesOf.get(u);
+          const st = i < ci ? 'done' : i === ci ? 'current' : ids.some(id => own(U, id)) ? 'current' : soon++ < UNIT_UPCOMING ? 'upcoming' : 'hidden';
+          for (const id of ids) { entry.states[id] = st; out.states[id] = st; }
+        });
+        Object.assign(entry, { active: true, current: cur });
+        out.active = true;
+      }
+      return out;
+    } catch { return subjOff(); }
+  }
+
+  // The current unit of each subject comes from one place (round 2 brief, section 7), in this order of precedence:
+  //   1. the cloud `schedule` row, 2. its cached copy on the device, 3. plan.js v2, 4. none (the subject is shown as today).
+  // scheduleCurrent(kidKey) gives 1 and 2 as {subjectKey: unitId}; planSubjects adds 3 and 4 itself (a value that is not a
+  // unit of its subject falls through to plan.js). Every caller goes through kidSubjects, which passes it to planSubjects.
+  // The reader is registered once with useSchedule(fn); fn(kidKey) returns {subjectKey: unitId}. engine/rewards-ui.js
+  // registers scheduleCached (below): the device copy, which every successful pull overwrites with the cloud rows, so it
+  // gives 1 when online and 2 when offline. With nothing registered (this module alone, as in most tests) scheduleCurrent
+  // gives {} and plan.js v2 decides. A reader that throws or returns garbage counts as none.
+  let scheduleSource = null;
+  function useSchedule(fn) { scheduleSource = typeof fn === 'function' ? fn : null; }
+  // Never throws. A fresh object with only safe subject keys mapped to a valid unit id string.
+  function scheduleCurrent(kidKey) {
+    const out = {};
+    if (!scheduleSource || !kidKeyOk(kidKey)) return out;
+    try {
+      const m = scheduleSource(kidKey);
+      if (isObj(m)) for (const k of keysOf(m)) { const u = m[k]; if (subjKeyOk(k) && pageIdOk(u)) out[k] = u; }
+    } catch { return {}; }
+    return out;
+  }
+  // ---- the device copy of the cloud schedule (W4) ----
+  // SCHEDULE_KEY is outside KEY_RE, so it is never synced through noos.stores, never in localData, exportAll or a backup
+  // code. Shape: {v: 1, kids: {kidKey: {subjectKey: {unit, at, pending, sent?}}}}: `unit` the current unit id, `at` the server
+  // updated_at of the row it last matched (null before the first push or pull), `pending` true while a parent's edit made on
+  // this device waits to be sent, `sent` (only with pending) the unit of a write whose answer has not come. Written by engine/sync.js only (pull, push, the editor's setSchedule); read here by
+  // scheduleCached, the reader engine/rewards-ui.js registers with useSchedule on the hub and on every chapter page (no
+  // request, no session and no engine/sync.js needed).
+  // scheduleKeyOk is the noos.schedule column check (supabase/noos_schema.sql): kid_key, subject and current_unit formats.
+  const SCHEDULE_KEY = 'noos_schedule';
+  const SUBJ_RE = /^[a-z][a-z0-9_-]{0,31}$/, TS_MAX = 40;
+  const scheduleKeyOk = (kid, subj, unit) => kidKeyOk(kid) && isStr(subj) && SUBJ_RE.test(subj) && !BAD_KEYS.has(subj)
+    && (unit === undefined || pageIdOk(unit));
+  // Never throws. The stored copy with only well-formed entries ({v: 1, kids: {}} when there is none or it is broken).
+  function scheduleCache() {
+    const out = { v: 1, kids: {} };
+    try {
+      const c = load(SCHEDULE_KEY), kids = isObj(c) && getOwn(c, 'v') === 1 ? getOwn(c, 'kids') : undefined;
+      if (!isObj(kids)) return out;
+      for (const kid of keysOf(kids)) {
+        const m = kids[kid];
+        if (!kidKeyOk(kid) || !isObj(m)) continue;
+        for (const subj of keysOf(m)) {
+          const e = m[subj], unit = isObj(e) ? getOwn(e, 'unit') : undefined, at = isObj(e) ? getOwn(e, 'at') : undefined;
+          if (!scheduleKeyOk(kid, subj, unit) || !(at === null || at === undefined || (isStr(at) && at.length <= TS_MAX))) continue;
+          const ent = { unit, at: isStr(at) ? at : null, pending: getOwn(e, 'pending') === true }, sent = getOwn(e, 'sent');
+          if (ent.pending && pageIdOk(sent)) ent.sent = sent;   // the unit of a write whose answer never came (engine/sync.js)
+          (out.kids[kid] = out.kids[kid] || {})[subj] = ent;
+        }
+      }
+    } catch { return { v: 1, kids: {} }; }
+    return out;
+  }
+  // The reader for useSchedule: the kid's {subjectKey: unitId} from the device copy ({} when none).
+  function scheduleCached(kidKey) {
+    const out = {}, kids = scheduleCache().kids;
+    if (!own(kids, kidKey)) return out;
+    for (const subj of Object.keys(kids[kidKey])) out[subj] = kids[kidKey][subj].unit;
+    return out;
+  }
+
+  // The per-subject state for a kid, as every caller gets it: planSubjects with the schedule (scheduleCurrent) and the
+  // device override `unlocked`. Pure but for the reader registered with useSchedule; never throws.
+  function kidSubjects(catalog, plan, kidKey, unlocked) {
+    return planSubjects(catalog, plan, kidKey, { current: scheduleCurrent(kidKey), unlocked });
+  }
+
+  // Never throws. True when a kid's chapter page shows the soft «not started in class yet» banner: kidSubjects(units, plan,
+  // kidKey, unlocked) puts the page in an upcoming or hidden unit. False for a page of a current or done unit (one the
+  // parent unlocked is current), of a subject without a schedule, missing from `units`, with `plan` or `units` pending
+  // (PLAN_PENDING), without `units` (missing or broken units.js), and without a kid key or page id.
+  function subjectBanner(units, plan, kidKey, pageId, unlocked) {
+    if (plan === PLAN_PENDING || units === PLAN_PENDING || !isStr(kidKey) || !isStr(pageId)) return false;
+    const st = kidSubjects(units, plan, kidKey, unlocked);
+    const s = own(st.states, pageId) ? st.states[pageId] : null;
+    return s === 'upcoming' || s === 'hidden';
   }
 
   // Pure, never throws. True when a kid's chapter page shows the soft «not started in class yet» banner: the kid's plan is
@@ -1134,10 +1496,12 @@
     EXCLUDED, pushResult, rowValue, starsFor, bumpBest, countedRows, pageStars, pagePct,
     dayKey, isoWeek, addDays, newKid, logAnswer, logStars, streak, level, jar, daysUntil,
     BADGES, buildQuest, questStatus, markLow, checkBadges,
-    KEY_RE, exportCode, parseCode, mergeAll,
+    KEY_RE, exportCode, parseCode, mergeAll, storeValid, localData, mergeBackup,
+    RESET, RESET_SKEW_MS, stampVal, resetStamp, syncMerge, syncBase,
     useStorage, load, save, kidStore, saveKid, family, saveFamily, manifests,
     onPageOpen, ensureQuest, dayQuest, usePlan, PLAN_PENDING, onAnswer, onRoundEnd, onBoss, onJarFull, kidStars, totalStars, jarFill, kidStarsSince, exportAll, importCode, previewImport, weekly,
-    bossRound, bossPass, bossHearts, bossOver, bossTaunt, BOSSES, bossFor, nextTab, bossUnlock, planState, planTest, planBanner,
+    bossRound, bossPass, bossHearts, bossOver, bossTaunt, BOSSES, bossFor, nextTab, bossUnlock, planState, planTest, planBanner, planSubjects,
+    useSchedule, scheduleCurrent, kidSubjects, subjectBanner, SCHEDULE_KEY, scheduleKeyOk, scheduleCache, scheduleCached,
     unlockPage, lockPage, testDateFor,
   };
   if (typeof window !== 'undefined') window.Rewards = Rewards;
