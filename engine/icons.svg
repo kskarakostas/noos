@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+<!-- noos icon sprite: the source of truth for the interface icons, the mark and the two mascots (round 3 brief, 4.4).
+     Pages do not load this file. node tools/build_icons.mjs turns it into engine/icons.js, the map behind
+     Icons.svg(name), which returns inline SVG markup, so icons show over http, on the encrypted site and in the
+     self-contained copies alike. tests/icons.test.js fails while engine/icons.js is out of step with this file.
+     Rules for a symbol (the generator checks them):
+     - id: lower case words joined by "-", stable once used; viewBox required.
+     - interface icon: viewBox 0 0 24 24 and the presentation attributes on the <symbol> itself
+       (stroke icons: fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round";
+       filled icons: fill="currentColor"); the shapes inside carry none, so CSS on the outer <svg> can recolour or
+       change the stroke width.
+     - mark-*, mascot-*: their own viewBox and colours. A new mascot drawing replaces the body of its symbol here, then
+       node tools/build_icons.mjs regenerates the map; nothing else changes.
+     - no id, href, style, script or on* attribute inside a symbol (inline copies would clash or run). -->
+
+<symbol id="back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></symbol>
+<symbol id="chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4 6.1 20.7l1.3-6.6L2.5 9.5l6.6-.8z"/></symbol>
+<symbol id="flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></symbol>
+<symbol id="play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></symbol>
+<symbol id="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
+<symbol id="skip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5l7 7-7 7M17 5v14"/></symbol>
+<symbol id="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/></symbol>
+<symbol id="gamepad" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 11v4M6 13h4"/><circle cx="16" cy="13" r="1"/></symbol>
+<symbol id="test" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+<symbol id="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></symbol>
+<symbol id="notebook" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12 8h4"/></symbol>
+<symbol id="trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/></symbol>
+<symbol id="gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M3 7h18v3H3zM12 7v13M12 7c-1.5-3.5-5-3.5-5-1.5S9.5 7 12 7zM12 7c1.5-3.5 5-3.5 5-1.5S14.5 7 12 7z"/></symbol>
+<symbol id="sound-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M17 9l4 6M21 9l-4 6"/></symbol>
+<!-- added in round 3, W5g (asked for by the page fit workers) -->
+<symbol id="sound-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5M19 7a7 7 0 0 1 0 10"/></symbol>
+<symbol id="retry" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v6h-6"/><path d="M19.4 15A8 8 0 1 1 18 7.2L20 10"/></symbol>
+<symbol id="shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3c4 0 6 10 10 10h4M3 17h3c1.6 0 2.9-1.4 4-3.3M14 10.3C15.1 8.4 16.4 7 18 7h2"/><path d="M17 4l3 3-3 3M17 14l3 3-3 3"/></symbol>
+<symbol id="arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V4M5 11l7-7 7 7"/></symbol>
+<symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></symbol>
+<symbol id="backspace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="M12 9.5l5 5M17 9.5l-5 5"/></symbol>
+<symbol id="parent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+<symbol id="chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
+
+<!-- the mark (docs/design/round3/icon.svg; favicon.svg is its copy): cover, spine and owl face. The spine follows the
+     rounded corner as a path, so no clipPath id is needed. -->
+<symbol id="mark" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1E4DB7"/><path d="M9 .92A14 14 0 0 0 0 14v36a14 14 0 0 0 9 13.08z" fill="#14213D"/><path d="M19 17l8 7M53 17l-8 7" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" fill="none"/><circle cx="27" cy="33" r="11" fill="#FFFFFF"/><circle cx="45" cy="33" r="11" fill="#FFFFFF"/><circle cx="29" cy="34" r="4.5" fill="#14213D"/><circle cx="43" cy="34" r="4.5" fill="#14213D"/><path d="M36 39l-4.5 8h9z" fill="#FFC93C"/></symbol>
+
+<!-- mascot slot (decision D11): the big owl drawn on the login cover (mockup 01) and the sticker owl (mockup 06) -->
+<symbol id="mascot-owl" viewBox="0 0 176 132"><path d="M34 16l22 20M142 16l-22 20" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" fill="none"/><circle cx="54" cy="72" r="38" fill="#FFFFFF"/><circle cx="122" cy="72" r="38" fill="#FFFFFF"/><circle cx="62" cy="76" r="16" fill="#14213D"/><circle cx="114" cy="76" r="16" fill="#14213D"/><circle cx="67" cy="70" r="5" fill="#FFFFFF"/><circle cx="119" cy="70" r="5" fill="#FFFFFF"/><path d="M88 92l-13 24h26z" fill="#FFC93C" stroke="#14213D" stroke-width="3" stroke-linejoin="round"/></symbol>
+<symbol id="mascot-sticker" viewBox="0 0 64 64"><circle cx="23" cy="30" r="11" fill="#FFFFFF" stroke="#14213D" stroke-width="3"/><circle cx="41" cy="30" r="11" fill="#FFFFFF" stroke="#14213D" stroke-width="3"/><circle cx="25" cy="31" r="4" fill="#14213D"/><circle cx="39" cy="31" r="4" fill="#14213D"/><path d="M32 37l-4 8h8z" fill="#D62839"/></symbol>
+</svg>

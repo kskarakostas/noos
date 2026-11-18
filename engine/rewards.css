@@ -9,6 +9,9 @@
 #pg:has(#rwSnd){display:flex;gap:6px;align-items:center}
 .rw-snd{min-width:44px;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.10);color:var(--ink)}
 .rw-snd[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-soft)}
+/* its icons (rewards-ui.js soundToggle with opts.icon, the chapter shell and the hub): the one of the state shows */
+.rw-snd .icon-sound-on,.rw-snd.is-on .icon-sound-off{display:none}
+.rw-snd.is-on .icon-sound-on{display:block}
 body.rw-snd-on header{padding-right:190px}
 
 /* 📊 button feedback when a star lands */
@@ -44,144 +47,344 @@ a.rw-task:hover{border-color:var(--ink)}
 /* test countdown banner in the header */
 .rw-count{display:flex;width:fit-content;max-width:100%;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;border-radius:14px;background:var(--m-soft);border:1px solid var(--m);font:800 15px Commissioner,sans-serif;color:var(--ink)}
 .rw-count.soon{background:var(--bad-soft);border-color:var(--bad)}
-.rw-nudge{min-height:44px;border:0;border-radius:12px;padding:8px 14px;background:var(--ink);color:#fff;font:800 14px Commissioner,sans-serif;cursor:pointer}
+.rw-nudge{min-height:44px;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:12px;padding:8px 14px;background:var(--ink);color:#fff;font:800 14px Commissioner,sans-serif;cursor:pointer}
+.rw-nudge .icon{flex:none;width:16px;height:16px}
 
-/* album stickers, badges and the family jar (hub) */
-.rw-sticker{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:16px;font-size:32px;line-height:1;background:#eeebe2;border:3px dashed var(--line);filter:grayscale(1);opacity:.45}
-.rw-sticker.on{filter:none;opacity:1;background:#fff;border:3px solid var(--subj,var(--ok));box-shadow:0 4px 12px rgba(0,0,0,.10)}
-.rw-sticker.gold{filter:none;opacity:1;background:linear-gradient(160deg,#fff8dc,#ffe28a);border:3px solid var(--gold)}
-.rw-badge{display:flex;flex-direction:column;align-items:center;gap:4px;width:96px;text-align:center;font:700 12px Commissioner,sans-serif;color:var(--ink)}
-.rw-badge .emo{display:flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:50%;font-size:30px;background:var(--gold-soft);border:3px solid var(--gold)}
-.rw-badge.locked{color:var(--muted)}
-.rw-badge.locked .emo{background:#eeebe2;border-color:var(--line);filter:grayscale(1);opacity:.5}
-.rw-jar{position:relative;width:110px;height:140px;border:4px solid var(--ink);border-top-width:10px;border-radius:14px 14px 28px 28px;background:#fff;overflow:hidden}
-.rw-jar-fill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,var(--gold),#ffe28a);transition:height .6s}
+/* hub: begin (index.html, engine/hub.js; round 3, W4). Everything down to «hub: end» styles the hub only, on the tokens of
+   tokens.css: squared paper, 2 px ink outlines, no drop shadows, the radii and type of brief section 4. «Βραβεία» (level,
+   sticker album, badge wall, family jar) is the W6a section below. */
+body.hub,body.hub *,body.hub *::before,body.hub *::after{box-sizing:border-box}
+body.hub{margin:0;font-family:var(--font);color:var(--ink);line-height:1.4;background-color:var(--paper);background-image:var(--paper-grid);
+  background-size:var(--grid-size) var(--grid-size);padding-bottom:calc(var(--bottom-bar-h) + env(safe-area-inset-bottom))}
+.hub [hidden]{display:none !important}
+.hub a{color:var(--cover)}
+.hub button,.hub a,.hub input,.hub select,.hub summary{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.hub :focus-visible{outline:3px solid var(--cover);outline-offset:2px}
+.hub-top :focus-visible{outline-color:var(--star)}
+.hub-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.hub svg{display:block;flex:none}
 
-/* hub: sound toggle, tile stars, level, streak, quest card, album, badge wall, jar */
-.rw-hsnd{position:absolute;top:14px;right:14px}
-.rw-tstars{font-size:13px;font-weight:800;color:#7a5a0a}
-.rw-tcount{display:flex;flex-direction:column;width:fit-content;max-width:100%;padding:4px 10px;border-radius:12px;background:#fdeee2;border:1px solid #e0782f;font:800 13px Commissioner,sans-serif;color:var(--ink)}
-.rw-tcount.soon{background:#fde6e4;border-color:#d4443b}
-.rw-tcount small{font-size:12px;font-weight:700}
-.rw-lvl{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-top:6px;font:800 13px Commissioner,sans-serif;color:var(--ink)}
-.rw-lvl-bar{display:block;width:90px;height:6px;border-radius:999px;background:#eee9dc;overflow:hidden}
-.rw-lvl-bar>span{display:block;height:100%;border-radius:999px;background:var(--gold)}
-.rw-lvl-next{color:var(--muted);font-weight:700;font-size:12px}
-.rw-streak{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:#fdeee2;font:800 15px Commissioner,sans-serif;color:var(--ink)}
-.rw-streak.zero{background:#f1efe8;color:var(--muted)}
-.rw-hq{margin-top:14px;padding:12px;border-radius:18px;background:#fffaf0;border:2px solid #f1e3bf}
-.rw-hq.all{background:#eaf7f0;border-color:var(--ok)}
-.rw-hq-h{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin-bottom:8px;font-size:16px}
-.rw-hq-h span{color:#13784a;font-weight:800;font-size:14px}
-.rw-hq-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
-.rw-hq-task{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border-radius:14px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none;min-width:0}
-a.rw-hq-task:hover{border-color:var(--ink)}
-.rw-hq-task.done{background:#e6f6ee;border-color:var(--ok)}
-.rw-hq-task.new{border-style:dashed}
-.rw-hq-txt{display:flex;flex-direction:column;min-width:0;flex:1}
-.rw-hq-txt b{font-size:15px;overflow-wrap:anywhere}
-.rw-hq-txt small{font-size:13px;color:var(--muted);font-weight:600;overflow-wrap:anywhere}
-.rw-hq-c{flex:0 0 auto;font:800 15px Commissioner,sans-serif;font-variant-numeric:tabular-nums;color:var(--muted)}
-.rw-hq-task.done .rw-hq-c{color:#13784a;font-size:20px}
-.rw-hq-empty{margin:0;color:var(--muted);font-weight:600}
-.rw-fold{margin-top:14px;border:1px solid var(--line);border-radius:18px;background:#fbfaf6}
-.rw-fold>summary{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 16px;font:800 17px Commissioner,sans-serif;cursor:pointer;list-style:none;border-radius:18px}
-.rw-fold>summary::-webkit-details-marker{display:none}
-.rw-fold-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-width:0}
-.rw-fold>summary::after{content:'▸';margin-left:auto;color:var(--muted);transition:transform .2s}
-.rw-fold[open]>summary::after{transform:rotate(90deg)}
-.rw-fold-n{font-size:14px;color:var(--muted);font-weight:700}
-.rw-apages{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:0 12px 12px}
-.rw-apage{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:16px;background:#fff;border:2px solid var(--subj,var(--line));color:var(--ink);text-decoration:none}
-.rw-apage-t{font-size:15px}
-.rw-apage.sealed{align-items:center;text-align:center;border:2px dashed var(--line);background:repeating-linear-gradient(135deg,#faf8f2 0 12px,#f3f0e7 12px 24px)}
-.rw-seal{font-size:36px;line-height:1}
-.rw-seal-t{font-size:13px;font-weight:700;color:var(--muted)}
-.rw-slots{display:flex;flex-wrap:wrap;gap:8px}
-.rw-slot{display:flex;flex-direction:column;align-items:center;gap:3px;width:72px;text-align:center;font:700 11px Commissioner,sans-serif;color:var(--muted);line-height:1.2}
-.rw-slot.on{color:var(--ink)}
-.rw-slot .rw-sticker{width:56px;height:56px;font-size:28px}
-.rw-slot-t{overflow-wrap:anywhere}
-.rw-slot-ok{color:#13784a;font-weight:800}
-.rw-bwall{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;padding:0 12px 12px}
-.rw-bwall .rw-badge{width:auto;padding:10px 6px;border-radius:16px;background:#fff;border:1px solid var(--line)}
-.rw-badge b{font-size:13px}
-.rw-badge small{font-size:11px;font-weight:600;color:var(--muted);line-height:1.3}
-.rw-badge-d{font-size:11px;font-weight:800;color:#7a5a0a}
-.rw-badge.secret .emo{font-size:28px;font-weight:800;color:var(--muted)}
-.rw-hjar{display:flex;align-items:center;gap:20px;margin-top:22px;padding:18px 20px;border-radius:26px;background:#fff;border:1px solid var(--line)}
-.rw-hjar.full{border:3px solid var(--gold);background:var(--gold-soft)}
-.rw-hjar .rw-jar{flex:0 0 auto}
-.rw-jar-n{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font:800 18px Commissioner,sans-serif;color:var(--ink)}
-.rw-hjar-txt{min-width:0}
-.rw-hjar-txt h3{margin:0 0 4px;font-size:20px}
-.rw-hjar-txt p{margin:2px 0;color:var(--muted);font-weight:600}
-.rw-hjar-n{font-size:18px;color:var(--ink) !important;font-weight:800 !important}
-.rw-hjar-reward{color:var(--ink) !important;font-weight:800 !important;overflow-wrap:anywhere}
-.rw-hjar-full{margin-top:8px !important;font-size:19px;color:#9a5a00 !important;font-weight:800 !important}
+/* top bar: the child switch, the streak and the stars */
+.hub-top{position:sticky;top:0;z-index:50;height:var(--bar-h);display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--cover)}
+.hub-who{position:relative;min-width:0;flex:0 1 auto}
+.hub-whob{height:44px;max-width:100%;display:flex;align-items:center;gap:8px;padding:0 12px 0 6px;border:0;border-radius:22px;background:var(--white);font:var(--fw-bold) 15px/1.1 var(--font);color:var(--ink);cursor:pointer}
+.hub-whob.single{cursor:default}
+.hub-whot{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-av{flex:none;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--star);font-size:14px;font-weight:800;color:var(--ink)}
+.hub-whob[aria-expanded="true"] .hub-whov{transform:rotate(180deg)}
+.hub-whomenu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:220px;display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--white);border:var(--outline);border-radius:var(--r-tile)}
+.hub-whoo{min-height:48px;display:flex;align-items:center;gap:10px;padding:6px 10px;border:0;border-radius:10px;background:var(--white);font:var(--fw-semi) 16px var(--font);color:var(--ink);text-align:left;cursor:pointer}
+.hub-whoo[aria-pressed="true"]{background:var(--cover-soft);font-weight:800}
+.hub-whotick{margin-left:auto;color:var(--cover);visibility:hidden}
+.hub-whoo[aria-pressed="true"] .hub-whotick{visibility:visible}
+.hub-chips{margin-left:auto;flex:none;display:flex;align-items:center;gap:8px}
+.hub-chip{height:36px;display:inline-flex;align-items:center;gap:4px;padding:0 10px;border-radius:18px;font:var(--fw-bold) 15px/1 var(--font)}
+.hub-streak{background:rgba(255,255,255,.16);color:var(--white)}
+.hub-streak.zero{color:var(--cover-text)}
+.hub-stars{background:var(--star);color:var(--ink)}
+.hub-title{font:var(--fw-bold) var(--fs-title) var(--font);color:var(--white)}
 
-/* hub parent area: hold gate with a progress ring, weekly notes, settings forms (text colours reach 4.5:1 on white) */
-.rw-parent{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:6px}
-.rw-gate{display:inline-flex;align-items:center;gap:10px;min-height:56px;padding:8px 20px 8px 10px;border-radius:999px;border:2px solid var(--line);background:#fff;font:800 16px Commissioner,sans-serif;color:var(--ink);cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.rw-gate:focus-visible,.rw-pbtn:focus-visible{outline:3px solid #4f46e5;outline-offset:2px}
-.rw-gate.holding{border-color:var(--ink)}
+/* tabs: a bottom bar below 1100 px (68 px, icon and label, the active item tinted with a 4 px top border), a rail above */
+.hub-nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--white);border-top:var(--outline);padding-bottom:env(safe-area-inset-bottom)}
+.hub-brand{display:none}
+.hub-tabs{display:flex;height:calc(var(--bottom-bar-h) - 2px);max-width:640px;margin:0 auto}
+.hub-tabs [role="tab"]{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 2px;border:0;border-top:4px solid transparent;background:transparent;font:var(--fw-semi) 12px/1.1 var(--font);color:var(--mute);cursor:pointer}
+.hub-tabs [role="tab"][aria-selected="true"]{background:var(--cover-soft);color:var(--cover);font-weight:800;border-top-color:var(--cover)}
+.hub-tabs [role="tab"]:focus-visible{outline-offset:-4px}
+.hub-teach .hub-nav,.hub-teach .hub-chips{display:none}
+body.hub.hub-teach{padding-bottom:0}
+/* teacher view (?view=teacher): intro, grade switch, then «Τετράδια» with titles only */
+.teach{padding:16px;background:var(--white);border:var(--outline);border-radius:var(--r-card);font-size:var(--fs-body)}
+.teach h2{margin:0 0 10px;font-size:22px}
+.teach h3{margin:14px 0 6px;font-size:15px;color:var(--mute)}
+.teach p{margin:0 0 10px}
+.teach-ch{margin:0 0 12px;padding-left:20px}
+.teach-ch li{margin:4px 0}
+.teach-exit a{display:inline-flex;align-items:center;min-height:44px;font-weight:800}
+.teach-pick{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;margin-bottom:16px}
+.teach-pick button{min-height:48px;padding:10px 20px;border-radius:var(--r-button);border:var(--outline);background:var(--white);font:var(--fw-bold) 16px var(--font);color:var(--ink);cursor:pointer}
+.teach-pick button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+
+/* panels: the phone layout, centred, a 640 px column at most; the sign-out line of the hosted site
+   (tools/build_secure.py puts it before </main>) shows under «Γονιός» only */
+.hub-panel{padding:var(--pad-screen)}
+.hub-panel>*{max-width:640px;margin-left:auto;margin-right:auto}
+#hubMain:not([data-tab="parent"])>:not(.hub-panel){display:none}
+.hub-panel h2{margin:0;font-size:var(--fs-heading);font-weight:800;line-height:1.2}
+.hub-empty{margin:0;font-size:14px;font-weight:600;color:var(--mute)}
+
+/* a drawn ratio (D6): star, «n / max», bar */
+.hub-ratio{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.hub-num{font-size:13px;font-weight:800;white-space:nowrap;color:var(--ink)}
+.hub-bar{display:block;flex:1 1 auto;min-width:32px;height:8px;border-radius:4px;background:var(--grid);overflow:hidden}
+.hub-bar>i{display:block;height:100%;background:var(--star)}
+.hub-star{color:var(--star);stroke:var(--ink);stroke-width:1.5px;stroke-linejoin:round}
+
+/* «Σήμερα»: one screen, a fixed-height column (top bar 64 + panel + bottom bar 68); the notebooks give way first */
+.hub-today{height:calc(100vh - var(--bar-h) - var(--bottom-bar-h));height:calc(100dvh - var(--bar-h) - var(--bottom-bar-h) - env(safe-area-inset-bottom));overflow:hidden}
+.hub-kid.today{height:100%;display:flex;flex-direction:column;gap:16px}
+.hub-card{flex:none;display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--white);border:var(--outline);border-radius:var(--r-card)}
+.hub-trow{display:flex;align-items:center;gap:14px;min-width:0}
+.hub-trow h2{flex:none;font-size:22px}
+.hub-trail{flex:1;min-width:0;display:flex;align-items:center}
+.hub-step{flex:none;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--white);font-size:15px;font-weight:800}
+.hub-step.done{background:var(--star);border:2px solid var(--ink);color:var(--ink)}
+.hub-step.next{border:3px solid var(--cover);color:var(--cover)}
+.hub-step.later{border:2px dashed var(--locked);color:var(--mute)}
+.hub-link{flex:1;min-width:6px;height:0;border-top:4px dotted var(--locked)}
+.hub-link.on{height:6px;border:solid var(--ink);border-width:1px 0;background:var(--star)}
+.hub-gift{flex:none;width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--rule-soft);border:2px dashed var(--rule);color:var(--rule)}
+.hub-gift.got{background:var(--star);border:2px solid var(--ink);color:var(--ink)}
+.hub-say{display:flex;align-items:center;gap:10px;min-width:0}
+.hub-say p{flex:1;min-width:0;margin:0;font-size:var(--fs-body);line-height:1.35;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hub-mini{flex:none;width:92px}
+.hub-go{height:var(--btn-h);display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r-button);background:var(--btn-bg);font:var(--btn-font);text-decoration:none}
+.hub a.hub-go,.hub-go{color:var(--btn-fg)}
+.hub-go.off{opacity:.5}
+.hub-nbs{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px}
+.hub-nbgrid{flex:1 1 168px;min-height:112px;max-height:168px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hub-nb{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:space-between;gap:6px;padding:10px 8px;overflow:hidden;background:var(--subj,var(--cover));border-left:var(--spine-w) solid var(--ink);border-radius:6px 12px 12px 6px;text-decoration:none}
+.hub a.hub-nb{color:var(--ink)}
+.hub-nbl{min-width:0;min-height:0;display:flex;flex-direction:column;gap:2px;padding:6px;overflow:hidden;background:var(--white);border-radius:4px;border-top:var(--label-rule);border-bottom:var(--label-rule)}
+.hub-nbs{font-size:13px;font-weight:800;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}
+.hub-nbc{font-size:12px;font-weight:600;line-height:1.2;color:var(--mute)}
+.hub-nbt{font-size:12px;line-height:1.2;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hub-nbr{flex:none;flex-wrap:wrap;gap:4px}
+.hub-nbr .hub-num{font-size:15px;color:var(--white)}
+.hub-nbr .hub-bar{flex:1 0 100%;height:10px;border-radius:5px;background:rgba(255,255,255,.35)}
+.hub-revs{flex:none;display:flex;flex-direction:column;gap:8px}
+.hub-rev{min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:var(--white);border:var(--outline);border-radius:var(--r-tile);text-decoration:none}
+.hub a.hub-rev{color:var(--ink)}
+.hub-revx{flex:1;min-width:0;display:flex;flex-direction:column}
+.hub-revt,.hub-revd{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-revt{font-size:15px;font-weight:800}
+.hub-revd{font-size:12px;font-weight:600;color:var(--mute)}
+.hub-revr{flex:none;width:92px;flex-wrap:wrap;justify-content:flex-end;gap:4px}
+.hub-revr .hub-bar{flex:1 0 100%}
+.hub-test.soon{border-color:var(--rule)}
+.hub-test.soon .hub-revt{color:var(--rule-text)}
+@media (max-height:760px){
+  .hub-panel.hub-today{padding:12px var(--pad-screen)}
+  .hub-kid.today{gap:12px}
+  .hub-card{padding:12px;gap:10px}
+  .hub-trow h2{font-size:20px}
+  .hub-say p{-webkit-line-clamp:2}
+}
+
+/* «Τετράδια»: one card per subject (its cover on the left edge), its units with their state, the pages as 60 px tiles */
+.hub-kid.books,.hub-kid.awards{display:flex;flex-direction:column;gap:16px}
+.hub-subj{display:flex;flex-direction:column;gap:12px;padding:12px;background:var(--white);border:var(--outline);border-left:10px solid var(--subj,var(--cover));border-radius:var(--r-tile)}
+.hub-unit{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--grid)}
+.hub-uh{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.hub-ut{min-width:0;display:flex;flex-direction:column}
+.hub-uch{font-size:12px;font-weight:600;color:var(--mute)}
+.hub-ut b{font-size:15px;font-weight:800;overflow-wrap:anywhere}
+.hub-ust{flex:none;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
+.hub-unit.done .hub-ust{background:var(--ok-soft);color:var(--ok-text)}
+.hub-unit.current .hub-ust{background:var(--cover-soft);color:var(--cover)}
+.hub-unit.upcoming .hub-uh{padding:8px 10px;border:2px dashed var(--locked);border-radius:var(--r-tile);background:var(--locked-fill)}
+.hub-unit.upcoming .hub-ust{color:var(--mute)}
+.hub-pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:8px}
+.hub-tile{min-width:0;min-height:var(--tile-h);display:flex;flex-direction:column;justify-content:center;gap:4px;padding:8px 12px;background:var(--white);border:var(--outline);border-radius:var(--r-tile);text-decoration:none}
+.hub a.hub-tile{color:var(--ink)}
+.hub-tl{display:flex;align-items:baseline;gap:8px;min-width:0}
+.hub-tn{flex:1;min-width:0;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-lv{flex:none;font-size:12px;font-weight:600;color:var(--mute)}
+.hub-tns{font-size:13px;font-weight:600;color:var(--mute)}
+.hub-tcount{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--rule-text)}
+
+/* «Βραβεία» (round 3, W6a): one card per block. Ratios: the bar, then «n / max». Earned: a solid card, its art on a yellow
+   disc turned like the sticker of mockup 06; locked: a dashed grey tile with a padlock. The album and the badge wall show
+   their first row or two until «Δες όλο ...» opens the rest in place. */
+.hub-aw{gap:12px}
+.hub-awh{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-width:0}
+.hub-panel .hub-awh h2,.hub-lvl h2{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px}
+.hub-awh h2 svg{color:var(--cover)}
+.hub-aratio{flex:0 1 200px;min-width:132px;display:inline-flex;align-items:center;gap:8px}
+.hub-aratio .hub-bar{height:10px;border-radius:5px}
+.hub-aratio .hub-num{flex:none;font-size:15px}
+.hub-awnote{margin:0;font-size:13px;font-weight:600;line-height:1.35;color:var(--mute)}
+.hub-awempty{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:var(--r-tile);background:var(--cover-soft)}
+.hub-awempty p{margin:0;min-width:0;font-size:15px;font-weight:600;line-height:1.35}
+.hub-grid{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+/* columns sized so a sticker name's longer words (about 90 px at 12 px) fit: 3, 5 from 560 px, 6 from 700 px; the first
+   row only while closed. Badges: 2 columns, 3 from 560 px; their first two rows while closed. */
+.hub-stks{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hub-bdgs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hub-stks.hub-prev>li:nth-child(n+4),.hub-bdgs.hub-prev>li:nth-child(n+5){display:none}
+@media (min-width:560px){
+  .hub-stks{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .hub-bdgs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .hub-stks.hub-prev>li:nth-child(n+4),.hub-bdgs.hub-prev>li:nth-child(n+5){display:flex}
+  .hub-stks.hub-prev>li:nth-child(n+6),.hub-bdgs.hub-prev>li:nth-child(n+7){display:none}
+}
+@media (min-width:700px){
+  .hub-stks{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .hub-stks.hub-prev>li:nth-child(n+6){display:flex}
+}
+/* the disc: earned art on yellow with an ink outline, turned; the owl on it is the sticker of mockup 06 */
+.hub-disc{flex:none;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.hub-owl,.on>.hub-disc{background:var(--star);border:var(--outline);transform:rotate(-8deg);color:var(--ink)}
+.off>.hub-disc{background:var(--white);border:2px dashed var(--locked);color:var(--mute)}
+.hub-emo{font-size:26px;line-height:1}
+/* a sticker: its subject's cover as a 4 px strip at the foot; the boss sticker is gold (a second ring round the disc) */
+.hub-stk{min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 12px;text-align:center;border-radius:var(--r-tile)}
+.hub-stk.on{--stk-bg:var(--white);border:var(--outline);background:linear-gradient(var(--subj,var(--cover)),var(--subj,var(--cover))) bottom/100% 4px no-repeat,var(--stk-bg)}
+.hub-stk.gold.on{--stk-bg:var(--gold-soft)}
+.hub-stk.gold.on>.hub-disc{outline:2px solid var(--ink);outline-offset:2px}
+.hub-stk.off,.hub-bdg.off,.hub-seal{border:2px dashed var(--locked);background:var(--locked-fill);color:var(--mute)}
+.hub-stkn{max-width:100%;font-size:12px;font-weight:600;line-height:1.25;overflow-wrap:anywhere;hyphens:auto;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hub-stk.on .hub-stkn{font-weight:800;color:var(--ink)}
+/* a badge: name, what earns it, and the day it was earned */
+.hub-bdg{min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;text-align:center;border-radius:var(--r-tile)}
+.hub-bdg.on{background:var(--white);border:var(--outline)}
+.hub-bdg>.hub-disc{width:48px;height:48px;margin-bottom:4px}
+.hub-bdg .hub-emo{font-size:24px}
+.hub-bdgn{font-size:13px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
+.hub-bdg.on .hub-bdgn{color:var(--ink)}
+.hub-bdgd{font-size:12px;font-weight:600;line-height:1.3;color:var(--mute);overflow-wrap:anywhere}
+.hub-bdgw{font-size:12px;font-weight:800;color:var(--ok-text)}
+.hub-more{min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border:var(--outline);border-radius:var(--r-button);background:var(--white);font:var(--fw-bold) 15px/1.2 var(--font);color:var(--ink);cursor:pointer}
+.hub-more[aria-expanded="true"] svg{transform:rotate(180deg)}
+/* the whole album: one group per page, its subject's cover on the left edge, its own count */
+.hub-apgs{display:flex;flex-direction:column;gap:16px}
+.hub-apg{min-width:0;display:flex;flex-direction:column;gap:8px;padding-left:10px;border-left:4px solid var(--subj,var(--cover))}
+.hub-apgh{margin:0;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:15px;font-weight:800;line-height:1.25}
+.hub-apgt{min-width:0;display:flex;flex-direction:column;overflow-wrap:anywhere}
+.hub-apgt small{font-size:12px;font-weight:600;color:var(--mute)}
+.hub-seal{min-height:56px;display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:var(--r-tile);font-size:13px;font-weight:600;text-decoration:none}
+.hub a.hub-seal{color:var(--mute)}
+/* the level: its number on a disc, the name, the ratio, the stars still needed, the week's freeze */
+.hub-lvl{display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--white);border:var(--outline);border-radius:var(--r-card)}
+.hub-lvrow{display:flex;align-items:center;gap:12px;min-width:0}
+.hub-lvno{flex:none;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--cover);color:var(--white);font-size:22px;font-weight:800}
+.hub-lvt{min-width:0;display:flex;flex-direction:column}
+.hub-lvn{font-size:22px;font-weight:800;line-height:1.15;overflow-wrap:anywhere}
+.hub-lvs{font-size:13px;font-weight:600;color:var(--mute)}
+.hub-lvl .hub-aratio{flex:none;width:100%}
+.hub-lvleft,.hub-freeze{margin:0;font-size:14px;font-weight:600;line-height:1.35;color:var(--mute)}
+.hub-freeze{font-size:13px}
+/* the family jar: drawn (ink lid, outlined glass, a yellow fill as high as the share of the goal), the ratio, the reward */
+#panelAwards #rwJar{margin-top:16px}
+.hub-jarc{flex-direction:row;align-items:center;gap:16px}
+.hub-jarc.full{background:var(--gold-soft)}
+.hub-jar{flex:none;width:76px;display:flex;flex-direction:column;align-items:center}
+.hub-jarlid{width:56px;height:12px;border-radius:4px;background:var(--ink)}
+.hub-jarbody{position:relative;width:76px;height:92px;border:var(--outline);border-radius:10px 10px 24px 24px;background:var(--white);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hub-jarbody>i{position:absolute;left:0;right:0;bottom:0;background:var(--star);transition:height .6s}
+.hub-jarbody>svg{position:relative}
+.hub-jart{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.hub-jart p{margin:0}
+.hub-jarsub{font-size:14px;font-weight:600;line-height:1.35;color:var(--mute)}
+.hub-jart .hub-aratio{flex:none;width:100%}
+.hub-jarrw{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:800;overflow-wrap:anywhere;min-width:0}
+.hub-jarrw svg{color:var(--rule)}
+.hub-jarfull{font-size:17px;font-weight:800}
+/* toasts over the hub: the 2 px ink outline, no drop shadow (rewards-ui.js toast) */
+body.hub .rw-toast,body.hub .rw-toast.glow{border:var(--outline);box-shadow:none;font-family:var(--font)}
+body.hub .rw-toast.glow{background:var(--gold-soft)}
+
+/* «Γονιός»: sound, the schedule hint, the hold gate, then the parent area's cards (text colours reach 4.5:1 on white) */
+.hub-sound{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;padding:8px 12px;background:var(--white);border:var(--outline);border-radius:var(--r-tile);font-weight:800}
+.hub .rw-snd{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:var(--outline);border-radius:var(--r-tile);background:var(--white);box-shadow:none}
+.hub .rw-snd[aria-pressed="true"]{background:var(--cover-soft)}
+.hub-planhint{margin-bottom:12px;padding:10px 14px;border-radius:var(--r-tile);background:var(--cover-soft);border-left:4px solid var(--cover);font-size:14px;font-weight:600}
+.hub-tip{margin-top:20px;font-size:14px;color:var(--mute)}
+.hub-tip b{color:var(--ink)}
+.hub-foot{margin-top:12px;font-size:13px;color:var(--mute);text-align:center}
+.rw-parent{display:flex;flex-direction:column;align-items:center;gap:6px}
+.rw-gate{display:inline-flex;align-items:center;gap:10px;min-height:56px;padding:8px 20px 8px 10px;border-radius:var(--r-button);border:var(--outline);background:var(--white);font:var(--fw-bold) 16px var(--font);color:var(--ink);cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.rw-gate.holding{background:var(--cover-soft)}
 .rw-ring{width:36px;height:36px;transform:rotate(-90deg)}
 .rw-ring circle{fill:none;stroke-width:4}
-.rw-ring .bg{stroke:#eee9dc}
-.rw-ring .fg{stroke:var(--ink);stroke-dasharray:100;stroke-dashoffset:100}
+.rw-ring .bg{stroke:var(--grid)}
+.rw-ring .fg{stroke:var(--cover);stroke-dasharray:100;stroke-dashoffset:100}
 .rw-gate.holding .rw-ring .fg{stroke-dashoffset:0;transition:stroke-dashoffset 2s linear}
-.rw-gate-hint{color:var(--muted);font-weight:600;font-size:13px}
-.rw-parent.open{align-items:stretch;gap:14px;padding:18px 20px;border-radius:26px;background:#fff;border:2px solid var(--ink)}
+.rw-gate-hint{color:var(--mute);font-weight:600;font-size:13px}
+.rw-parent.open{align-items:stretch;gap:16px}
 .rw-phead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .rw-phead h3{margin:0;font-size:22px}
 .rw-phead h3:focus{outline:none}
-.rw-pbtn{min-height:48px;padding:8px 16px;border-radius:14px;border:2px solid var(--ink);background:#fff;font:800 15px Commissioner,sans-serif;color:var(--ink);cursor:pointer;align-self:flex-start}
-.rw-pbtn:disabled{border-color:var(--line);color:var(--muted);cursor:not-allowed}
-.rw-pbtn.armed,.rw-confirm{background:var(--ink);color:#fff}
-.rw-weeks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.rw-week,.rw-pcard{padding:14px 16px;border-radius:18px;background:#fbfaf6;border:1px solid var(--line);display:flex;flex-direction:column;gap:8px;min-width:0}
-.rw-week h4,.rw-pcard h4{margin:0;font-size:17px}
-.rw-pcard h5{margin:8px 0 0;font-size:15px;color:var(--muted)}
+.rw-pbtn{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-radius:var(--r-button);border:var(--outline);background:var(--white);font:var(--fw-bold) 15px var(--font);color:var(--ink);cursor:pointer;align-self:flex-start}
+.rw-pbtn:disabled{border-color:var(--locked);color:var(--mute);cursor:not-allowed}
+.rw-pbtn.armed,.rw-confirm{background:var(--ink);color:var(--white)}
+.rw-weeks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.rw-week,.rw-pcard{min-width:0;display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:var(--r-card);background:var(--white);border:var(--outline)}
+.rw-week h4,.rw-pcard h4,.rw-sched>h4{margin:0;font-size:var(--fs-heading)}
+.rw-pcard h5{margin:8px 0 0;font-size:15px;color:var(--mute)}
 .rw-week-l,.rw-week-weak{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-weight:600;overflow-wrap:anywhere}
 .rw-week-weak{list-style:none;padding:0;gap:6px}
+.rw-week-bar{max-width:140px;margin-top:4px}
 .rw-week-wh{margin:4px 0 0;font-weight:800}
-.rw-week-none,.rw-psub{margin:0;color:var(--muted);font-weight:600;font-size:14px}
-.rw-week-a{display:flex;flex-direction:column;min-height:48px;justify-content:center;padding:6px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.rw-week-none,.rw-psub{margin:0;color:var(--mute);font-weight:600;font-size:14px}
+.rw-week-a{display:flex;flex-direction:column;justify-content:center;min-height:48px;padding:6px 12px;border-radius:var(--r-tile);background:var(--white);border:2px solid var(--grid);color:var(--ink);text-decoration:none}
+.hub a.rw-week-a{color:var(--ink)}
 a.rw-week-a:hover{border-color:var(--ink)}
-.rw-week-a small{color:var(--muted);font-weight:600}
+.rw-week-a small{color:var(--mute);font-weight:600}
 .rw-field{font-weight:800;font-size:14px}
-.rw-pcard input[type=number],.rw-pcard input[type=text],.rw-pcard input[type=date],.rw-pcard input[type=email],.rw-pcard input[type=password]{min-height:48px;padding:8px 12px;border-radius:12px;border:2px solid var(--line);font:600 17px Commissioner,sans-serif;color:var(--ink);background:#fff;max-width:100%}
+.rw-pcard input[type=number],.rw-pcard input[type=text],.rw-pcard input[type=date],.rw-pcard input[type=email],.rw-pcard input[type=password]{min-height:48px;max-width:100%;padding:8px 12px;border-radius:var(--r-input);border:var(--outline);font:600 17px var(--font);color:var(--ink);background:var(--white)}
 .rw-pcard input[type=number]{width:140px}
-.rw-pcard input[type=text]{width:100%}
-/* cloud sync card (hub.js syncCard) */
-.rw-pcard input[type=email]{width:100%}
+.rw-pcard input[type=text],.rw-pcard input[type=email]{width:100%}
 .rw-syform{display:flex;flex-direction:column;gap:8px;min-width:0}
 .rw-sypass{display:flex;flex-wrap:wrap;gap:8px}
 .rw-pcard .rw-sypass input{flex:1 1 180px;min-width:0}
 .rw-syas{overflow-wrap:anywhere}
-.rw-trow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 0;border-top:1px solid var(--line)}
+.rw-trow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 0;border-top:1px solid var(--grid)}
 .rw-tlab{flex:1 1 200px;min-width:0;font-weight:700;overflow-wrap:anywhere}
-.rw-thint{flex:1 1 100%;color:var(--muted);font-weight:700;font-size:13px}
+.rw-oopen{display:inline-flex;align-items:center;gap:6px;min-height:48px;font-weight:800;color:var(--ok-text)}   /* W3: a chapter the parent opened */
+.rw-thint{flex:1 1 100%;color:var(--mute);font-weight:700;font-size:13px}
 .rw-cpnow{margin:0;font-weight:800;overflow-wrap:anywhere}
-/* class plan card (hub.js planCards): one part per subject */
-.rw-cpsubj{display:flex;flex-direction:column;gap:8px;min-width:0;padding-top:8px;border-top:1px solid var(--line)}
-.rw-cpsubj h5{margin:0}
-.rw-cphint{overflow-wrap:anywhere}
-/* schedule editor (hub.js editPart): back and forward side by side, the unit picker full width */
-.rw-spnav{display:flex;flex-wrap:wrap;gap:8px}
-.rw-spnav .rw-pbtn{flex:1 1 120px}
-.rw-pcard select{min-height:48px;width:100%;max-width:100%;padding:8px 12px;border-radius:12px;border:2px solid var(--line);font:600 16px Commissioner,sans-serif;color:var(--ink);background:#fff}
-.rw-pcard select:focus-visible{outline:3px solid #4f46e5;outline-offset:2px}
-.rw-ta{width:100%;min-height:96px;padding:10px;border-radius:12px;border:2px solid var(--line);font:13px/1.4 ui-monospace,monospace;color:var(--ink);background:#fff;word-break:break-all;resize:vertical}
+.rw-pcard select{min-height:48px;width:100%;max-width:100%;padding:8px 12px;border-radius:var(--r-input);border:var(--outline);font:600 16px var(--font);color:var(--ink);background:var(--white)}
+.rw-ta{width:100%;min-height:96px;padding:10px;border-radius:var(--r-input);border:var(--outline);font:13px/1.4 ui-monospace,monospace;color:var(--ink);background:var(--white);word-break:break-all;resize:vertical}
 .rw-code{display:flex;flex-direction:column;gap:8px}
 .rw-code:empty{display:none}
-.rw-msg{margin:0;font-weight:700;font-size:14px;color:#13784a}
+.rw-msg{margin:0;font-weight:700;font-size:14px;color:var(--ok-text)}
 .rw-msg:empty{display:none}
-.rw-msg.err{color:#b3261e}
+.rw-msg.err{color:var(--rule-text)}
+.rw-line{display:flex;align-items:center;gap:8px}
+/* «Πού είναι η τάξη» (hub.js planCards): the two-part kid switch, one card per kid, one part per subject with its cover on
+   the left edge; the editor's arrows around the current unit (mockup 07) */
+.rw-sched{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rw-kidsw{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));height:48px;border:var(--outline);border-radius:var(--r-tile);overflow:hidden;background:var(--white)}
+.rw-kidsw-b{min-width:0;padding:0 6px;border:0;background:var(--white);font:var(--fw-semi) 16px var(--font);color:var(--ink);cursor:pointer}
+.rw-kidsw-b[aria-pressed="true"]{background:var(--ink);color:var(--white);font-weight:800}
+.rw-pcard.rw-plancard{gap:12px;padding:0;border:0;background:transparent}
+.rw-cpsubj{display:flex;flex-direction:column;gap:10px;min-width:0;padding:12px;background:var(--white);border:var(--outline);border-left:10px solid var(--subj,var(--cover));border-radius:var(--r-tile)}
+.rw-cphead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
+.rw-pcard .rw-cphead h5{margin:0;font-size:var(--fs-heading);font-weight:800;color:var(--ink);overflow-wrap:anywhere}
+.rw-cppos{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--mute)}
+.rw-cppos .hub-bar{flex:none;width:40px;height:6px}
+.rw-cphint{overflow-wrap:anywhere}
+.rw-spnav{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:8px;align-items:center}
+.rw-ibtn{width:48px;height:48px;padding:0;border-radius:var(--r-tile);align-self:center}
+.rw-spnow{min-height:48px;padding:4px 10px;border-radius:var(--r-label);background:var(--locked-fill);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.rw-spch{font-size:12px;font-weight:600;color:var(--mute)}
+.rw-spnow b{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* the rail at 1100 px and wider (D4): the mark and the four tabs in the cover colour; no bottom bar */
+@media (min-width:1100px){
+  body.hub{padding-bottom:0;padding-left:var(--rail-w)}
+  body.hub.hub-teach{padding-left:0}
+  .hub-nav{top:0;right:auto;width:var(--rail-w);display:flex;flex-direction:column;gap:20px;padding:16px 12px;border-top:0;background:var(--cover)}
+  .hub-brand{display:flex;align-items:center;gap:10px;padding:0 6px;font-size:22px;font-weight:800;color:var(--white)}
+  .hub-tabs{flex-direction:column;gap:4px;height:auto;max-width:none;margin:0}
+  .hub-tabs [role="tab"]{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;height:52px;padding:0 14px;border-top:0;border-left:4px solid transparent;border-radius:var(--r-tile);font-size:16px;color:var(--white)}
+  .hub-tabs [role="tab"][aria-selected="true"]{background:var(--white);color:var(--cover);border-left-color:var(--star)}
+  .hub-tabs [role="tab"]:focus-visible{outline-color:var(--star);outline-offset:2px}
+  .hub-today{height:calc(100vh - var(--bar-h));height:calc(100dvh - var(--bar-h))}
+}
+@media (prefers-reduced-motion:reduce){
+  .hub-jarbody>i{transition:none}
+  /* the hold still takes 2 s; the ring shows full at once as a static highlight */
+  .rw-gate.holding .rw-ring .fg{transition:none}
+}
+/* hub: end */
 
 /* chapter boss (the questions reuse the quiz .opt, .prog, .expl and .btn styles) */
 .rw-boss-intro{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
 .rw-boss-intro p{margin:0;max-width:560px}
+.rw-boss-intro>.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.rw-boss-intro>.btn .icon{flex:none;width:20px;height:20px}
 .rw-boss-face{font-size:72px;line-height:1.1}
 .rw-boss-face.small{font-size:36px;flex:0 0 auto}
 .rw-boss-face.hit{animation:rwhit .45s ease-out}
@@ -189,7 +392,8 @@ a.rw-week-a:hover{border-color:var(--ink)}
 .rw-boss-name{margin:0;font:800 22px Commissioner,sans-serif}
 .rw-boss-say{font-weight:600;font-size:17px}
 .rw-boss-rule{color:var(--muted);font-weight:700}
-.rw-boss-won{color:var(--ok);font-weight:800}
+.rw-boss-won{display:inline-flex;align-items:center;gap:6px;color:var(--ok-text);font-weight:800}   /* --ok-text: 6.6:1 on white (--ok was 4.3) */
+.rw-boss-won .icon{width:20px;height:20px}
 .rw-boss-hprow{display:flex;align-items:center;gap:10px;margin-top:10px}
 .rw-boss-hp{flex:1;min-width:0;height:16px;border-radius:999px;background:#eeebe2;border:1px solid var(--line);overflow:hidden}
 .rw-boss-hpfill{height:100%;background:linear-gradient(90deg,var(--bad),#f08a5d);transition:width .4s}
@@ -205,11 +409,7 @@ a.rw-week-a:hover{border-color:var(--ink)}
 .rw-boss-taunt{margin:10px 0 0;padding:8px 12px;border-radius:12px;background:var(--m-soft);border:1px solid var(--line);font-weight:700}
 .rw-boss-taunt b{font-weight:800}
 .rw-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-/* boss review (rewards-ui.js end, practiceEnd; the list itself is the engine's .rv): the retry beside «Νέα μάχη», and the
-   practice label that replaces the boss and its health bar while practising */
-.rw-boss-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.rw-boss-btns .btn{min-height:44px}
-.rw-boss-btns.rv-end{margin-top:14px}
+/* the practice label that replaces the boss and its health bar while practising (rewards-ui.js practice) */
 .rw-boss-practice{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin-top:10px;padding:8px 12px;border-radius:12px;background:var(--m-soft);border:1px dashed var(--m);color:var(--ink);font-weight:800}
 .rw-boss-practice span{font-weight:600;font-size:14px;color:var(--muted)}
 /* character art (rewards-ui.js art): the SVG takes the emoji's box, sized by the font-size the emoji had, so the layout
@@ -244,11 +444,6 @@ a.rw-week-a:hover{border-color:var(--ink)}
   .rw-plannote{margin:2px 14px 6px;padding:8px 12px;font-size:14px}
 }
 @media(max-width:600px){
-  /* hub on a phone: the jar sits above its text, the sound toggle stays in the hero corner */
-  .rw-hjar{flex-direction:column;text-align:center;gap:12px;padding:16px}
-  .rw-hsnd{top:10px;right:10px}
-  .rw-parent.open{padding:14px}
-  .rw-weeks{grid-template-columns:1fr}
   /* phone: the three tasks share one row; labels shorten, counts stay, full text is in title and aria-label */
   .rw-quest{display:block}
   .rw-quest-h{display:block;font-size:13px;margin-bottom:4px}
@@ -262,10 +457,6 @@ a.rw-week-a:hover{border-color:var(--ink)}
 
 @media(prefers-reduced-motion:reduce){
   .rw-toast,#pgBtn.rw-bump{animation:none}
-  .rw-jar-fill,.rw-fold>summary::after{transition:none}
   .rw-boss-face.hit,.owl.rw-art-on .is-cheer,.rw-heart.lost{animation:none}
   .rw-boss-hpfill{transition:none}
-  /* the hold still takes 2 s; the ring shows full at once as a static highlight */
-  .rw-gate.holding .rw-ring .fg{transition:none}
-  .rw-gate.holding{background:var(--gold-soft)}
 }

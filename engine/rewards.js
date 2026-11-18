@@ -428,8 +428,52 @@
     return new Date(Math.floor(Math.max(t * 1000, prev + 1000) / 1000)).toISOString();
   }
 
+  // ---- Learning path (round 3, W3; brief section 7, D8, A2) ----
+  // The chapter's steps: 0 Σύνοψη, 1 Κάρτες, 2 Παίζω (every game), 3 Κουίζ and Σωστό ή Λάθος, 4 Τελικό τέρας. Gates are per
+  // page (a harder b/c version has its own, decision 2). What the gates need that the rows do not hold lives in the page's
+  // own store, progress_<id>._path (a '_' key: never a row, never counted, travels with the store in localStorage, the
+  // backup code and the cloud row), every field optional, absent on a store written before this version:
+  //   read: true     the summary was read to its end once
+  //   rated: [i]     indices of the cards rated at least once («Το ήξερα» or «Όχι ακόμα»), ascending, no duplicates
+  //   played: [t]    tab ids of the games played at least once (one checked answer, or opening a game with no progress row)
+  //   passed: true   a quiz round (a true/false round on a page without a quiz) finished with 7 of 10 or better
+  //   open: n        the highest step ever open (1 to 4): what makes unlocking permanent
+  //   all: true      the parent opened the whole chapter («Άνοιξε όλο το κεφάλαιο», Rewards.openChapter)
+  // Merge (backup code and sync, mergeProgress): read, passed, all OR; rated, played sorted union; open max; unknown fields
+  // dropped. Each is a join, so the merge is symmetric, idempotent and order-independent, and «once true stays true».
+  // «Μηδενισμός» (engine.js api.reset) keeps `_path` whole, and a newer reset stamp never drops it (mergeProgress): a reset
+  // never re-locks a step.
+  const PATH = '_path', PATH_TOP = 4, MAX_RATED = 2000, MAX_PLAYED = 200;
+  const PASS_OF = [7, 10];
+  const TEST_ROWS = new Set(['cards', 'quiz', 'tf']);   // the rows of steps 1 and 3; every other row is game progress   // a quiz round passes with score / total >= 7 / 10 (A2)
+  const cardIdx = x => Number.isInteger(x) && x >= 0 && x < 100000;
+  const PATH_T = { read: isBool, passed: isBool, all: isBool, open: x => Number.isInteger(x) && x >= 0 && x <= PATH_TOP,
+    rated: a => Array.isArray(a) && a.length <= MAX_RATED && a.every(cardIdx),
+    played: a => Array.isArray(a) && a.length <= MAX_PLAYED && a.every(pageIdOk) };
+  // the valid entries of a list, without duplicates, sorted, the `max` smallest kept (a join: the smallest of a union is the
+  // smallest of the parts' smallest)
+  const listOf = (a, ok, max, byNum) => (Array.isArray(a) ? [...new Set(a.filter(ok))].sort(byNum ? (x, y) => x - y : undefined).slice(0, max) : []);
+  // Pure. The canonical `_path` of two raw values (either may be absent or junk): only true flags, open > 0 and non-empty lists.
+  function mergePath(a, b) {
+    const A = isObj(a) ? a : {}, B = isObj(b) ? b : {}, out = {};
+    for (const f of ['read', 'passed', 'all']) if (getOwn(A, f) === true || getOwn(B, f) === true) out[f] = true;
+    const open = Math.max(...[getOwn(A, 'open'), getOwn(B, 'open'), 0].filter(PATH_T.open));
+    if (open > 0) out.open = open;
+    const rated = listOf([].concat(listOf(getOwn(A, 'rated'), cardIdx, MAX_RATED, true), listOf(getOwn(B, 'rated'), cardIdx, MAX_RATED, true)), cardIdx, MAX_RATED, true);
+    if (rated.length) out.rated = rated;
+    const played = listOf([].concat(listOf(getOwn(A, 'played'), pageIdOk, MAX_PLAYED), listOf(getOwn(B, 'played'), pageIdOk, MAX_PLAYED)), pageIdOk, MAX_PLAYED);
+    if (played.length) out.played = played;
+    return out;
+  }
+  // Pure. The page's `_path` facts, canonical ({} when there are none).
+  const pathOf = progress => mergePath(isObj(progress) ? getOwn(progress, PATH) : undefined, undefined);
+  // Ever played: answers, a list entry, or what «Μηδενισμός» keeps of them (best, hi, low).
+  const everPlayed = rec => isObj(rec) && (num(getOwn(rec, 'n')) > 0 || listLen(rec) > 0 || num(getOwn(rec, 'best')) > 0
+    || num(getOwn(rec, 'hi')) > 0 || getOwn(rec, 'low') === true);
+  const passes = (score, total) => isNum(score) && isNum(total) && total > 0 && score >= 0 && score * PASS_OF[1] >= total * PASS_OF[0];
+
   function storeOk(key, v) {
-    if (key.startsWith('progress_')) return Object.keys(v).every(row => (row === RESET ? resetOk(v[row]) : isObj(v[row]) && fieldsOk(v[row], row === '_boss' ? BOSS_T : REC_T)));
+    if (key.startsWith('progress_')) return Object.keys(v).every(row => (row === RESET ? resetOk(v[row]) : isObj(v[row]) && fieldsOk(v[row], row === '_boss' ? BOSS_T : row === PATH ? PATH_T : REC_T)));
     if (key.startsWith('noos_rows_')) return own(v, 'file') && fieldsOk(v, MANIFEST_T);
     if (key.startsWith('noos_kid_')) return fieldsOk(v, KID_T);
     return fieldsOk(v, FAMILY_T);
@@ -516,8 +560,17 @@
     return out;
   }
 
-  // Reset stamps decide first (see RESET above); `rec` merges two records of one row (mergeRec; joinRec for sync).
+  // Reset stamps decide first (see RESET above); `rec` merges two records of one row (mergeRec; joinRec for sync). The
+  // learning path `_path` merges with mergePath whatever the stamps (see PATH above). G1: a side with old-version progress
+  // (oldProgress, judged on each side before its rows meet the other side's level or reset) gives the result open 4: written
+  // when the result has a `_path` anyway, or when its rows no longer show that progress (a newer reset cleared them); two
+  // stores without `_path` whose merged rows still show it stay as before (no `_path`), and the page opens them on load.
   function mergeProgress(x, y, rec = mergeRec) {
+    const out = mergeRows(x, y, rec), old = oldProgress(x) || oldProgress(y);
+    if (own(x, PATH) || own(y, PATH) || (old && !oldProgress(out))) out[PATH] = mergePath(mergePath(getOwn(x, PATH), getOwn(y, PATH)), old ? { open: PATH_TOP } : undefined);
+    return out;
+  }
+  function mergeRows(x, y, rec) {
     const sx = stampOf(x), sy = stampOf(y);
     if (sx === sy) return unionMap(x, y, (a, b) => (isObj(a) && isObj(b) ? rec(a, b) : isObj(a) ? a : b));
     const [n, o] = sx > sy ? [x, y] : [y, x], out = clone(n);
@@ -778,6 +831,8 @@
   // manifest, checked like a stored one. Inactive: exactly the plain device-manifest candidates.
   // `progress` ({pageId: progress object}, with or without a plan) is read instead of the stored progress of those pages:
   // the page strip passes its own page's progress as it was at page open, before the page's games stored anything.
+  // G3: a row whose step the learning path still locks (rowsLevel of its page, with `day` and the page's test date) is no
+  // candidate; with every step open the candidates are exactly as before.
   function questCands(kidKey, opts) {
     const o = isObj(opts) ? opts : {}, st = kidSubjects(o.catalog, o.plan, kidKey, o.unlocked);
     const ms = manifests(), cands = [], prog = isObj(o.progress) ? o.progress : {};
@@ -792,7 +847,9 @@
       const tier = !st.active ? null : own(st.states, id) ? st.states[id] : 'free';
       if (tier === 'upcoming' || tier === 'hidden') continue;
       const p = (own(prog, id) && isObj(prog[id]) ? prog[id] : load('progress_' + id)) || {};
+      const lv = rowsLevel(ms[id].rows, p, o.day, testDateFor(kidKey, id));
       for (const [key, label, type] of countedRows(ms[id].rows)) {
+        if (rowStep(key) > lv) continue;
         const rec = recOf(p, key), hit = type === 'hit';
         const value = hit ? (rec && num(rec.n) >= 5 ? rowValue(rec, type) : null) : rowValue(rec, type);
         const c = { pageId: id, key, label, file: ms[id].file, type, value, len: hit ? 0 : listLen(rec),
@@ -816,17 +873,40 @@
   // is used; while it is PLAN_PENDING nothing is built (false), so no path builds a planless quest while plan.js is on its
   // way. Without an own `catalog` the units set by usePlan are used. Without an own `unlocked` in opts the kid store's
   // `unlocked` is used (slice 4; planSubjects checks it).
+  // G3: a stored quest whose task sits on a step the learning path locks (rowsLevel; a quest stored before G3, the day of
+  // the update) and has no progress today loses that task, and the free slots are filled by a new pick (not while the plan
+  // is pending: then the task only goes); the other tasks stay where they are. A quest built since G3 never has one.
   function questFor(kid, kidKey, day, opts) {
-    if (dayQuest(kid, day)) return false;
+    const q = dayQuest(kid, day), shut = q ? q.tasks.filter(t => taskShut(kidKey, kid, day, q, t, opts)) : [];
+    if (q && !shut.length) return false;
     const o = Object.assign({}, isObj(opts) ? opts : {}, { day });
     if (!own(o, 'plan')) {
-      if (knownPlan === PLAN_PENDING) return false;
+      if (knownPlan === PLAN_PENDING) {
+        if (!q) return false;
+        kid.quest = Object.assign({}, q, { tasks: q.tasks.filter(t => !shut.includes(t)) });
+        return true;
+      }
       o.plan = knownPlan;
     }
     if (!own(o, 'catalog')) o.catalog = knownUnits;
     if (!own(o, 'unlocked')) o.unlocked = getOwn(kid, 'unlocked');
-    kid.quest = buildQuest(questCands(kidKey, o), day);
+    const fresh = buildQuest(questCands(kidKey, o), day);
+    if (!q) { kid.quest = fresh; return true; }
+    const keep = q.tasks.filter(t => !shut.includes(t)), ids = new Set(keep.map(t => t.pageId + ':' + t.key));
+    kid.quest = Object.assign({}, q, { tasks: keep.concat(fresh.tasks.filter(t => !ids.has(t.pageId + ':' + t.key))).slice(0, QUEST_TASKS) });
     return true;
+  }
+  // A task on a step its page's rowsLevel does not open, with no right answer (hit) and no list growth today.
+  function taskShut(kidKey, kid, day, q, t, opts) {
+    if (!isStr(t.pageId) || !isStr(t.key)) return false;
+    const ex = isObj(opts) && isObj(opts.extra) ? getOwn(opts.extra, t.pageId) : undefined, m = manifests()[t.pageId] || (isObj(ex) ? ex : null);
+    const rows = m && Array.isArray(m.rows) && m.rows.length ? m.rows : [[t.key, isStr(t.label) ? t.label : t.key, t.type === 'hit' ? 'hit' : 'list']];
+    const p = load('progress_' + t.pageId) || {};
+    if (rowStep(t.key) <= rowsLevel(rows, p, day, testDateFor(kidKey, t.pageId))) return false;
+    const st = questStatus({ quest: q, days: getOwn(kid, 'days') }, day, questLens(q, null, null));
+    const mine = st.tasks.find(x => x.pageId === t.pageId && x.key === t.key);
+    const acts = isObj(getOwn(kid, 'days')) && isObj(kid.days[day]) && isObj(kid.days[day].acts) ? getOwn(kid.days[day].acts, t.pageId + ':' + t.key) : null;
+    return !(mine && mine.count > 0) && !(isObj(acts) && num(acts.n) > 0);
   }
 
   // Saves only a rebuilt quest with tasks: an empty one is never kept (questFor rebuilds it), so a kid with no
@@ -836,8 +916,9 @@
   // pending it returns the stored quest (possibly another day's or null).
   function ensureQuest(kidKey, day, opts) {
     if (!kidKey) return null;
-    const kid = kidStore(kidKey);
-    if (questFor(kid, kidKey, day || dayKey(new Date()), opts) && kid.quest.tasks.length) saveKid(kidKey, kid);
+    const kid = kidStore(kidKey), d = day || dayKey(new Date()), had = !!dayQuest(kid, d);
+    // G3: a stored quest that lost a locked task is saved even when empty, so no reader shows the stored locked task again
+    if (questFor(kid, kidKey, d, opts) && (kid.quest.tasks.length || had)) saveKid(kidKey, kid);
     return kid.quest;
   }
 
@@ -1264,6 +1345,117 @@
     return { unlocked, left: unlocked ? 0 : left };
   }
 
+  /* ---------- the learning path: which steps of a page are open (round 3, W3; PATH above) ---------- */
+  // G1 (K. S. Karakostas, 18 Nov 2026), «started chapters open»: a chapter in which the child has progress from the old
+  // version opens whole (open 4, boss included) and stays open. The rule: a store has old-version progress when its rows
+  // show a stage above its stored open level (`_path.open`, 0 when absent, `{}` or junk). The stage of the rows: a `_boss`
+  // record 4, a quiz or tf row started 3, the cards row 1, any other row (not a '_' key; EXCLUDED keys too) started 2;
+  // `started` below says when a row counts, so an empty row a page writes on load (ch02's `miss`) does not. A page must
+  // never write a row while its step is locked (`CLAUDE.md`). Under this version a row only gets progress while its step is open, and the refresh that
+  // opened the step stored that level first, so a store of this version never qualifies; merges keep that (the merged
+  // stage is at most the larger of the two, `open` is their max). pathState applies it on load (stores open 4), and
+  // mergeProgress judges each side before its rows meet the other side's level or a newer reset, so a backup import or a
+  // sync before the page ever loads cannot lose it, in any merge order (once any side has a `_path`, the merged `_path` is
+  // the same in every order; stores that never had one differ at most in whether open 4 is written yet or still read from
+  // the rows).
+  // Limits: a store the round 3 code opened before G1 (its stored level already covers its rows) keeps its level, not 4;
+  // the stage is read from the store alone, so a key that is no longer a row of the page still counts; closed although
+  // started: an old store reset on the old version that kept nothing (times_r and mountq only, a hit row never scored by
+  // the reward layer, ch02's dis played with no mission done: its miss row looks as on load).
+  // Started (G1 review round 1: a chapter the child started opens, with or without a score; for this rule only, never for
+  // stars or counting): any cards row (the old version wrote it only on a rating, so «Όχι ακόμα» alone leaves an empty
+  // list); answers under any key, the uncounted times_r and mountq too; a reset leftover with best and no hi (only a hit
+  // row gets best alone, and the old version made a hit row with its first answer). Not started: ch02's `miss` row drawn
+  // on load with no mission done ({list: [], total}, seeded best 0 and hi 0, or that after a reset).
+  const started = (k, r) => isObj(r) && (k === 'cards' || everPlayed(r) || (own(r, 'best') && !own(r, 'hi')));
+  function rowStage(p) {
+    if (!isObj(p)) return 0;
+    if (recOf(p, '_boss')) return PATH_TOP;
+    let s = 0;
+    for (const k of keysOf(p)) if (k.charAt(0) !== '_' && started(k, p[k])) s = Math.max(s, TEST_ROWS.has(k) ? (k === 'cards' ? 1 : 3) : 2);
+    return s;
+  }
+  function oldProgress(p) { return rowStage(p) > (pathOf(p).open || 0); }
+  // Pure, never throws. o = {page, rows, progress, today, testDate}; page = what the page has: {sum: bool (a summary tab),
+  // cards: bool (a cards tab), cardCount: the number of cards (null while unknown), games: [{t: tab id, key: its progress
+  // row key or null}] (the «Παίζω» tabs in tab order), quiz: bool, tf: bool}.
+  // The condition that opens step k (C[k]); a step the page does not have is met (vacuous):
+  //   C1 Κάρτες: the summary was read (read), or the page has no summary.
+  //   C2 Παίζω: every card rated once: |rated ∪ the cards row's list|, counting indices below cardCount, reaches cardCount;
+  //      no cards tab: met; cards but cardCount unknown: not met (no step opens on a guess).
+  //   C3 Κουίζ and Σωστό ή Λάθος: every game played once: its row ever played (everPlayed) or its tab in `played`; no games: met.
+  //   C4 Τελικό τέρας: passed; a page with neither quiz nor true/false: met.
+  // The guard rails give a base level that only goes up:
+  //   open (stored: what was open before stays open), progress (the highest step with progress: cards row or rated 1, a game
+  //   played or any other row with progress 2, the quiz or tf row 3, a `_boss` record 4; a stage with progress is open and
+  //   so is everything before it), all (the parent's open all) 4, a test date today or within UNLOCK_DAYS days 4, and
+  //   progress from the old version (oldProgress above, G1) 4, so nothing the old version had open is ever locked.
+  // level = base, then +1 while the next condition holds. Step k is open when k <= level (Σύνοψη always).
+  // Returns {level, need (the condition the next step waits for, 0 at level 4), met (C, met[k] for k 1 to 4), read, rated,
+  // cardCount, games [{t, played}],
+  // left [tab ids not played], passed, all, near, base, store}: `store` is the `_path` to save (open raised to level,
+  // canonical), or null when the stored one is already that (nothing is written for a store that has no path and nothing open).
+  function pathState(o) {
+    const a = isObj(o) ? o : {}, pg = isObj(a.page) ? a.page : {}, p = isObj(a.progress) ? a.progress : {};
+    const raw = getOwn(p, PATH), path = pathOf(p), rows = Array.isArray(a.rows) ? a.rows.filter(rowOk) : [];
+    const cards = pg.cards === true, n = Number.isInteger(pg.cardCount) && pg.cardCount >= 0 ? pg.cardCount : null;
+    const cardsRec = recOf(p, 'cards'), seen = new Set(path.rated || []);
+    if (cardsRec && Array.isArray(cardsRec.list)) for (const i of cardsRec.list) if (cardIdx(i)) seen.add(i);
+    const rated = n === null ? seen.size : [...seen].filter(i => i < n).length;
+    const playedTabs = path.played || [];
+    const games = (Array.isArray(pg.games) ? pg.games : []).filter(g => isObj(g) && pageIdOk(g.t)).map(g => ({ t: g.t,
+      played: (isStr(g.key) && everPlayed(recOf(p, g.key))) || playedTabs.includes(g.t) }));
+    const C = [true, pg.sum !== true || path.read === true, !cards || (n !== null && rated >= n), games.every(g => g.played),
+      !(pg.quiz === true || pg.tf === true) || path.passed === true];
+    let progress = 0;
+    if (cards && (everPlayed(cardsRec) || seen.size > 0)) progress = 1;
+    // a game played, or any other progress row (not the summary, cards, quiz, true/false or boss row) with progress: game
+    // progress, also when its tab has a row key of its own or none (dim5_fysiki_ch02: the row `miss` of the tab `dis`)
+    if (games.some(g => g.played) || rows.some(r => r[0].charAt(0) !== '_' && !TEST_ROWS.has(r[0]) && everPlayed(recOf(p, r[0])))) progress = 2;
+    if (everPlayed(recOf(p, 'quiz')) || everPlayed(recOf(p, 'tf'))) progress = 3;
+    if (recOf(p, '_boss')) progress = 4;
+    // G1: progress from the old version opens the whole chapter (oldProgress above; it replaces the old boss rule here).
+    const legacy = oldProgress(p);
+    const days = validDay(a.today) && validDay(a.testDate) ? daysUntil(a.today, a.testDate) : null;
+    const near = days !== null && days <= UNLOCK_DAYS, all = path.all === true;
+    const base = Math.max(path.open || 0, progress, legacy || near || all ? PATH_TOP : 0);
+    let level = base;
+    while (level < PATH_TOP && C[level + 1]) level++;
+    const want = mergePath(raw, level > 0 ? { open: level } : undefined);
+    const store = raw === undefined ? (Object.keys(want).length ? want : null) : same(want, raw) ? null : want;
+    return { level, need: level < PATH_TOP ? level + 1 : 0, met: C, read: path.read === true, rated, cardCount: n, games,
+      left: games.filter(g => !g.played).map(g => g.t), passed: path.passed === true, all, near, base, store };
+  }
+  // The step of a progress row (as Engine.shell.step for its tab): cards 1, quiz and tf 3, `_boss` 4, any other row a game 2.
+  const rowStep = key => (key === 'cards' ? 1 : key === 'quiz' || key === 'tf' ? 3 : key === '_boss' ? PATH_TOP : 2);
+  // Pure, never throws (G3). The open level of a page as anything that knows only its rows reads it (the daily mission on
+  // every page and the hub): pathState's `base`, the guard rails alone (the stored `open`, progress, old-version progress,
+  // a test date within UNLOCK_DAYS, the parent's open all), with the page described from its rows. No gate condition is
+  // stepped through: a page holds games without a row (ch10 `solver`, ch02 `dis`) and a card count the rows do not tell,
+  // and the page stores its level on every refresh, so `open` already says what it opened. Never above the page's own
+  // level; lower only for a page whose gate was met but never stored (not opened since). -1 when no rows are known.
+  function rowsLevel(rows, progress, today, testDate) {
+    try {
+      const rs = Array.isArray(rows) ? rows.filter(rowOk) : [];
+      if (!rs.length) return -1;
+      const keys = rs.map(r => r[0]), games = countedRows(rs).filter(r => rowStep(r[0]) === 2).map(r => ({ t: r[0], key: r[0] }));
+      const page = { sum: true, cards: keys.includes('cards'), cardCount: null, games, quiz: keys.includes('quiz'), tf: keys.includes('tf') };
+      return pathState({ page, rows: rs, progress: isObj(progress) ? progress : {}, today, testDate: testDate || null }).base;
+    } catch { return -1; }
+  }
+  // The parent's «Άνοιξε όλο το κεφάλαιο» (hub): sets `_path.all` in progress_<pageId>; true when it changed the store.
+  // A bad page id, or a page already open that way, writes nothing.
+  function openChapter(pageId) {
+    if (!pageIdOk(pageId)) return false;
+    const key = 'progress_' + pageId, p = load(key) || {};
+    if (pathOf(p).all) return false;
+    p[PATH] = mergePath(getOwn(p, PATH), { all: true });
+    save(key, p);
+    return true;
+  }
+  // True when the parent opened the whole chapter (`_path.all`).
+  const chapterOpen = pageId => pageIdOk(pageId) && pathOf(load('progress_' + pageId)).all === true;
+
   /* ---------- timed release: the class plan (plan.js, audit section 8) ---------- */
   const UPCOMING = 2;   // pages after the last current one shown as upcoming teasers
   const planOff = () => ({ active: false, states: {}, current: [], done: [], upcoming: [], hidden: [] });
@@ -1503,6 +1695,7 @@
     bossRound, bossPass, bossHearts, bossOver, bossTaunt, BOSSES, bossFor, nextTab, bossUnlock, planState, planTest, planBanner, planSubjects,
     useSchedule, scheduleCurrent, kidSubjects, subjectBanner, SCHEDULE_KEY, scheduleKeyOk, scheduleCache, scheduleCached,
     unlockPage, lockPage, testDateFor,
+    PATH, PATH_TOP, UNLOCK_DAYS, pathOf, mergePath, pathState, rowStep, rowsLevel, passes, openChapter, chapterOpen,
   };
   if (typeof window !== 'undefined') window.Rewards = Rewards;
   if (typeof module !== 'undefined' && module.exports) module.exports = Rewards;

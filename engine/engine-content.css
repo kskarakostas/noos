@@ -1,5 +1,6 @@
 /* ===== Content kit: subject theme and generic game styles =====
-   Engine.build pages get it from _template.html, and Engine.build adds body.themed and sets --subj/--subj-soft.
+   Engine.build pages get it from _template.html; Engine.build adds body.themed and no longer tints the page (round 3: the
+   per-subject --subj/--subj-soft it once set are left unset, so the kit's defaults below apply).
    Hand-written pages link it after engine.css and before their own <style> (then engine-ui.css), put class="themed"
    on <body> (plus "young" for the small grades); their own rules win over the kit's. A page sets another subject colour
    with body.themed{--subj:...;--subj-soft:...} (a :root value would lose to the one set here on body).
@@ -10,6 +11,10 @@ body.themed{--subj:#4f46e5;--subj-soft:#eceafd;--purple:#8e44ad;--purple-soft:#f
 /* Φυσική (Ε΄): hub orange; #a95419 is the same hue, 5.3:1 with white, 4.7:1 on #fdeee2 */
 body.themed.phys{--subj:#e0782f;--subj-soft:#fdeee2;--subj-strong:#a95419}
 body.themed nav{background:#f7f8fcee;backdrop-filter:blur(4px)}
+/* round 3 (W2): with the chapter shell (html.sh) the per-subject page tint goes. The kit's accent is the cover blue and
+   what sat on --subj-strong (primary buttons, chips) is ink; the paper and its grid come from engine-ui.css. Subject
+   colours live on the hub's notebook tiles (tokens.css --cover-<subject>). */
+html.sh body.themed,html.sh body.themed.phys{--subj:var(--cover);--subj-soft:var(--cover-soft);--subj-strong:var(--ink);background-color:var(--paper);background-image:var(--paper-grid)}
 body.themed .tabs button.on{background:var(--subj-strong,var(--subj));border-color:var(--subj-strong,var(--subj))}
 body.themed .btn:not(.ghost):not(.ok):not(.bad){background:var(--subj-strong,var(--subj))}
 body.themed #pgBtn{border-color:var(--subj);color:var(--subj-strong,var(--subj))}
@@ -59,9 +64,6 @@ body.young h1{font-size:clamp(26px,5vw,36px)}
 .gm-mark{font-weight:800;margin-left:4px}
 .opt.right .gm-mark,.ord-done.right .gm-mark{color:var(--ok)}
 .opt.wrong .gm-mark,.ord-done.wrong .gm-mark{color:var(--bad)}
-.gm-act{text-align:center;margin-top:14px}
-.gm-nav{text-align:right;margin-top:12px}
-.gm-nav:empty{display:none}
 /* order: the answer row on top, the pieces to tap under it */
 .ord-ans{list-style:none;margin:0;padding:8px;display:flex;flex-wrap:wrap;gap:8px;min-height:64px;border:2px dashed var(--line);border-radius:14px;background:#fff}
 .ord-ans li{display:flex;min-width:0;max-width:100%}
@@ -71,8 +73,6 @@ body.young h1{font-size:clamp(26px,5vw,36px)}
 .ord-pool .ord-chip:hover{border-color:var(--subj)}
 .ord-t{min-width:0;overflow-wrap:anywhere}
 .ord-n{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:26px;height:26px;border-radius:999px;background:var(--subj-strong,var(--subj));color:#fff;font-size:14px;font-weight:800}
-.ord-ans li.ord-slot{align-items:center;justify-content:center;min-width:52px;min-height:48px;border:2px dashed var(--line);border-radius:12px}
-.ord-slot .ord-n{background:var(--line);color:var(--muted)}
 .ord-ans li.ord-done{align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:2px solid;font-weight:700}
 .ord-ans li.ord-done.right{border-color:var(--ok);background:var(--ok-soft)}
 .ord-ans li.ord-done.wrong{border-color:var(--bad);background:var(--bad-soft)}
@@ -87,6 +87,986 @@ body.young h1{font-size:clamp(26px,5vw,36px)}
 .src-title{margin:0 0 6px;font-size:18px;color:var(--subj-strong,var(--subj))}
 .src-text{font-size:17px;line-height:1.55;overflow-wrap:anywhere}
 .src-text p{margin:0 0 8px}
-.src-fold summary{padding:10px 0;min-height:44px;box-sizing:border-box}
 .src-link{margin:6px 0 0}
 .src-link a{display:inline-flex;align-items:center;min-height:44px;font-weight:700;color:var(--subj-strong,var(--subj))}
+
+/* ===== fit pass (round 3, W5): one section per page. A worker edits only between its own begin and end lines. ===== */
+/* fit dim5_fysiki_ch01: begin */
+/* Φυσική Ε΄ κεφ. 1: the page's own games on the activity frame, Ζυγαριά (#bal), Επιπλέει; (#sink), Ασκήσεις (#ex).
+   The body is a column; the drawing (svg) is the region that flexes and keeps its ratio inside its box. Some rules carry
+   !important only to beat the !important phone rules of engine-ui.css (.seg, .btn, select, input). */
+#bal .sh-body,#sink .sh-body,#ex .sh-body{display:flex;flex-direction:column;gap:8px}
+#bal .sh-body>*,#sink .sh-body>*,#ex .sh-body>*{flex:none;margin:0}
+#bal .sh-body>p.muted,#sink .sh-body>p.muted,#ex .sh-body>p.muted{font-size:var(--fs-small);line-height:1.3}
+#bal #balSvg,#sink #skSvg{flex:1 1 0;min-height:136px;max-height:420px;width:100%;display:block;background:var(--white);border:var(--outline);border-radius:var(--r-card)}
+/* the answer pair of #bal and #sink (the group carries data-primary): option buttons, white, 2 px ink */
+#bal .bal-guess,#sink .sk-ans{display:flex;gap:8px}
+#bal .bal-guess button,#sink .sk-ans button{flex:1 1 0;min-width:0;min-height:var(--btn-h);padding:4px 8px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border:var(--outline);border-radius:var(--r-button);background:var(--white);color:var(--ink);font:var(--fw-bold) 15px/1.2 var(--font);cursor:pointer}
+#bal .bal-guess button:hover:not(:disabled),#sink .sk-ans button:hover:not(:disabled){background:var(--cover-soft)}
+#sink .sk-ans button{font-size:17px}
+#sink .sk-ans .icon{flex:none;width:22px;height:22px;stroke-width:3}
+#sink .sk-ans .sk-upi{transform:rotate(180deg)}
+/* Ζυγαριά: the mode switch in the progress line row, full width */
+#bal #balMode{flex:1 1 auto;display:flex !important;width:100%}
+#bal #balMode button{flex:1 1 0;min-width:0;min-height:var(--tap);padding:0 8px !important;font-size:14px !important;line-height:1.15}
+/* the two pickers carry their caption inside the box, top left, so the row stays one control high */
+#bal .bal-pick{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:stretch}
+#bal .bal-pick label{position:relative;display:block;min-width:0}
+#bal .bal-cap{position:absolute;top:4px;left:10px;pointer-events:none;font:var(--fw-semi) var(--fs-small-min)/14px var(--font);color:var(--mute)}
+#bal .bal-pick select{width:100%;min-width:0;min-height:48px;padding:16px 6px 0 8px;font-size:16px !important;font-weight:var(--fw-bold)}
+#bal #balRand{min-width:var(--tap);min-height:var(--tap);padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px !important}
+#bal #balRand .icon{flex:none;width:22px;height:22px}
+#bal .bal-out{display:flex;flex-direction:column;gap:4px;padding:8px 12px;border-radius:var(--r-tile);background:var(--cover-soft)}
+#bal #balGuessFb{margin:0;font-size:15px;line-height:1.3}
+#bal #balGuessFb:empty{display:none}
+#bal #balGuessFb.ok{color:var(--ok-text)}
+#bal #balGuessFb.bad{color:var(--rule-text)}
+#bal #balTxt{margin:0;padding:0;background:none;font-size:15px;line-height:1.3}
+#bal #balTxt .muted{display:block;font-size:var(--fs-small);line-height:1.3}
+/* tighter steps on this game: its body holds the most (picker, drawing, two texts). The drawing stops shrinking at
+   140 px, where its smallest label (30 units of a 340 unit high viewBox) is still 12 px. */
+#bal .sh-prog{padding:8px 0 0}
+#bal .sh-body{gap:4px;padding-bottom:4px}
+#bal .sh-body>p.muted{font-size:var(--fs-small-min);line-height:1.2}
+#bal #balSvg{min-height:140px}
+@media(max-width:599.98px){#bal #balRand{width:var(--tap);padding:0}#bal #balRand .bal-rt{display:none}}
+@media(min-width:600px){#bal .bal-guess button{font-size:17px}}
+/* tablet and laptop: room for the usual steps; the drawings' labels go back to their old size in svg units (CSS font-size
+   beats the attribute), still 15 px or more on screen at these sizes */
+@media(min-width:600px) and (min-height:780px){
+  #bal .sh-prog{padding:12px 0 4px}
+  #bal .sh-body{gap:8px;padding-bottom:12px}
+  #bal .sh-body>p.muted{font-size:var(--fs-small);line-height:1.3}
+  #bal .bal-out{padding:12px}
+  #bal #balSvg text{font-size:18px}
+  #bal #balSvg text[font-weight]{font-size:22px}
+  #sink #skSvg text{font-size:13px}
+}
+/* Επιπλέει;: the bonus tag, the question, the density; the explanation and «Επόμενο» are the feedback panel (.sh-fb) */
+#sink #skLiquid{align-self:flex-start;padding:2px 12px;border-radius:999px;background:var(--star);color:var(--ink);font:var(--fw-bold) var(--fs-small)/1.5 var(--font)}
+#sink #skLiquid:empty{display:none}
+#sink #skQ{font-size:var(--fs-question);line-height:1.25}
+#sink #skInfo{font-size:15px}
+#sink .sh-body>p.note{font-size:var(--fs-small-min);line-height:1.3}
+/* the tank stops shrinking at 136 px, where its liquid label (22 units of a 240 unit high viewBox) is still 12 px */
+#sink .sh-body{gap:4px;padding-bottom:4px}
+/* Ασκήσεις: the type filter on its own row of the progress line, the answer field, the calculator folded under it */
+#ex .sh-prog{flex-wrap:wrap;row-gap:8px}
+#ex #exType{flex:1 1 100%;display:flex !important;width:100%}
+#ex #exType button{flex:1 1 auto;min-width:0;min-height:var(--tap);padding:0 6px !important;font-size:14px !important}
+#ex #exQ{font-size:var(--fs-question);line-height:1.25;overflow-wrap:anywhere}
+#ex .ex-in{display:flex;align-items:center;gap:8px}
+#ex #exIn{flex:0 1 200px;min-width:0;min-height:var(--btn-h);font-size:22px !important;font-weight:var(--fw-bold)}
+#ex #exUnit{font:var(--fw-bold) 18px var(--font)}
+#ex #exFb{margin:0;font-size:15px;line-height:1.35}
+#ex .ex-calc{border:var(--outline);border-radius:var(--r-tile);background:var(--white)}
+#ex .ex-calc summary{padding:12px;line-height:20px;font:var(--fw-bold) 15px/20px var(--font)}
+#ex .ex-calc[open]{padding-bottom:12px}
+#ex .ex-cin{display:flex;flex-wrap:wrap;gap:8px 16px;padding:0 12px}
+#ex .ex-cin label{display:flex;align-items:center;gap:6px;font-weight:var(--fw-semi)}
+#ex .ex-cin input{width:96px;min-height:var(--tap)}
+#ex #cOut{margin:8px 12px 0}
+/* the calculator open: it takes the body on its own (no room for both on a phone); the exercise, its field and its
+   buttons come back when it is folded again */
+#ex:has(.ex-calc[open]) .sh-body>:not(.ex-calc),#ex:has(.ex-calc[open]) .sh-actions{display:none}
+/* fit dim5_fysiki_ch01: end */
+/* fit dim5_fysiki_ch02: begin */
+/* dim5_fysiki_ch02_migmata.html: its four games (#sort, #sep, #dis, #wsearch) on the activity frame of engine-ui.css.
+   Rules here sit before engine-ui.css, so they win by id; where engine-ui.css uses !important below 1100 px, so do they.
+   Every rule is scoped to the page's body class fit-ch02 (W5g: #wsearch exists on dim5_fysiki_ch03 too). */
+body.fit-ch02 #sort,body.fit-ch02 #sep{--fit02-tick:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  --fit02-cross:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")}
+body.fit-ch02 #sort .sh-body,body.fit-ch02 #sep .sh-body,body.fit-ch02 #dis .sh-body,body.fit-ch02 #wsearch .sh-body{display:flex;flex-direction:column;gap:var(--sp-3)}
+body.fit-ch02 #sort .sh-body p.muted,body.fit-ch02 #sep .sh-body p.muted,body.fit-ch02 #dis .sh-body p.muted,body.fit-ch02 #wsearch .sh-body p.muted{margin:0;font:var(--fw-regular) var(--fs-body-sm)/1.4 var(--font)}
+body.fit-ch02 #sort .item-card,body.fit-ch02 #sep .item-card{margin:0;border:var(--outline);border-radius:var(--r-card);background:var(--white);color:var(--ink)}
+/* right and wrong: a tick or a cross next to the colour, never colour alone */
+body.fit-ch02 #sort .bin.flash-ok,body.fit-ch02 #sep .tool.right{border-color:var(--ok);background:var(--ok-soft);box-shadow:inset 0 0 0 2px var(--ok)}
+body.fit-ch02 #sort .bin.flash-bad,body.fit-ch02 #sep .tool.wrong{border-color:var(--rule);background:var(--rule-soft);box-shadow:inset 0 0 0 2px var(--rule)}
+body.fit-ch02 #sort .bin.flash-ok::after,body.fit-ch02 #sep .tool.right::after,body.fit-ch02 #sort .bin.flash-bad::after,body.fit-ch02 #sep .tool.wrong::after{content:"";flex:none;width:24px;height:24px;margin-left:auto;
+  -webkit-mask:var(--fit02-tick) center/contain no-repeat;mask:var(--fit02-tick) center/contain no-repeat;background:var(--ok-text)}
+body.fit-ch02 #sort .bin.flash-bad::after,body.fit-ch02 #sep .tool.wrong::after{-webkit-mask-image:var(--fit02-cross);mask-image:var(--fit02-cross);background:var(--rule-text)}
+/* the verdict panel of #sort (#soFb) and #sep (.sp-fb); the script shows and hides #soFb and #spFb with style.display */
+body.fit-ch02 #soFb.sh-fb{font:var(--fw-regular) var(--fs-body)/1.4 var(--font)}
+body.fit-ch02 #sep .sp-fb:has(#spNext:disabled){display:none}   /* shown once a tool is picked, and at the end with «Ξανά» */
+
+/* sort: the item, then the three boxes */
+body.fit-ch02 #sort .item-card{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-1);padding:var(--sp-3) var(--sp-4);
+  font:var(--fw-bold) var(--fs-question)/1.25 var(--font);text-align:center}
+body.fit-ch02 #sort .item-card .emo{font-size:44px;line-height:1.1}
+body.fit-ch02 #sort .item-card .btn{min-height:var(--btn-h);padding:0 var(--sp-5)}
+body.fit-ch02 #sort .bins{flex:none;margin:0;display:grid;grid-template-columns:1fr;gap:var(--sp-2)}
+body.fit-ch02 #sort .bin{min-height:60px;display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-4);text-align:left;border:var(--outline);border-radius:var(--r-tile);
+  background:var(--white);color:var(--ink);font:var(--fw-bold) var(--fs-body)/1.25 var(--font)}
+body.fit-ch02 #sort .bin .ico{flex:none;min-width:44px;font-size:28px;line-height:1;text-align:center}
+
+/* separation lab: the hint and the rank, the problem, the seven tools */
+body.fit-ch02 #sep #spLevel{flex:0 1 auto;min-width:0;max-width:45%;color:var(--ink);text-align:right;overflow-wrap:anywhere}
+body.fit-ch02 #sep .item-card{flex:none;display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);font:var(--fw-bold) var(--fs-heading)/1.3 var(--font);text-align:left}
+body.fit-ch02 #sep .item-card .emo{flex:none;font-size:36px;line-height:1}
+body.fit-ch02 #sep .tools{flex:none;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
+body.fit-ch02 #sep .tool{min-width:0;min-height:var(--tap);display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-2);text-align:left;border:var(--outline);border-radius:var(--r-tile);
+  background:var(--white);color:var(--ink);font:var(--fw-bold) var(--fs-small)/1.2 var(--font);overflow-wrap:anywhere}
+body.fit-ch02 #sep .tool .ico{flex:none;font-size:22px;line-height:1}
+body.fit-ch02 #sep .tool:disabled{cursor:default;opacity:1}
+body.fit-ch02 #sep .tool:disabled:not(.right):not(.wrong){color:var(--mute);border-color:var(--locked)}
+body.fit-ch02 #sep .sh-body>.note{margin:0}
+body.fit-ch02 #sep:has(#spNext:not(:disabled)) .sh-body>.note{display:none}   /* below the tools: room for the verdict panel; back with the next problem */
+
+/* dissolving lab: the settings, the glass (it flexes) beside its numbers, the running explanation, the missions */
+body.fit-ch02 #dis .dis-set{flex:none;display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+body.fit-ch02 #dis .dis-set .seg{flex:1 1 150px;width:auto !important;flex-wrap:nowrap}
+body.fit-ch02 #dis .dis-set .seg button{flex:1 1 0;min-width:0;min-height:var(--tap);padding:var(--sp-1) var(--sp-2) !important;font:var(--fw-bold) var(--fs-body-sm)/1.2 var(--font) !important}
+body.fit-ch02 #dis .lab{flex:1 1 auto;min-height:150px;display:flex;align-items:stretch;gap:var(--sp-3);margin:0}
+body.fit-ch02 #dis #dSvg{flex:1 1 0;min-width:0;height:100%;max-height:340px;display:block}
+body.fit-ch02 #dis .dis-side{flex:0 0 50%;display:flex;flex-direction:column;justify-content:center;gap:var(--sp-1)}
+body.fit-ch02 #dis .stat{padding:var(--sp-1) 0;border-bottom:2px solid var(--grid);font:var(--fw-semi) var(--fs-small)/1.3 var(--font);gap:var(--sp-2)}
+body.fit-ch02 #dis .stat b{flex:none;font-size:var(--fs-body)}
+body.fit-ch02 #dis #dReset{margin-top:var(--sp-2);min-height:var(--tap);padding:0 var(--sp-3);font:var(--fw-bold) var(--fs-body-sm) var(--font) !important}
+body.fit-ch02 #dis #dMsg{flex:none;margin:0;padding:var(--sp-2) var(--sp-3);border:2px solid var(--cover);border-radius:var(--r-tile);background:var(--cover-soft);font:var(--fw-regular) var(--fs-body-sm)/1.35 var(--font)}
+body.fit-ch02 #dis .dis-miss{flex:none}
+body.fit-ch02 #dis .dis-miss h3{margin:0 0 var(--sp-1);font:var(--fw-bold) var(--fs-heading-sm) var(--font)}
+body.fit-ch02 #dis #dMissions{margin:0;padding:0;list-style:none}
+body.fit-ch02 #dis #dMissions li{margin:0 0 var(--sp-1);font:var(--fw-regular) var(--fs-small)/1.35 var(--font)}
+body.fit-ch02 #dis .dis-miss .note{margin:var(--sp-1) 0 0;font-size:var(--fs-small-min)}
+body.fit-ch02 #dis .dis-mbtn{flex:none;min-height:var(--tap);padding:0 var(--sp-3);border:var(--outline);border-radius:var(--r-tile);background:var(--white);color:var(--ink);
+  font:var(--fw-bold) var(--fs-body-sm) var(--font);cursor:pointer}
+body.fit-ch02 #dis .dis-mbtn[aria-expanded="true"]{background:var(--ink);color:var(--white)}
+@media(max-width:1099.98px) and (max-height:999.98px){   /* short screens: the missions open with «Αποστολές» in place of the glass */
+  body.fit-ch02 #dis .dis-miss{display:none}
+  body.fit-ch02 #dis.dis-mon .dis-miss{display:block}
+  body.fit-ch02 #dis.dis-mon .lab,body.fit-ch02 #dis.dis-mon #dMsg{display:none}
+}
+@media(min-width:1100px),(min-height:1000px){body.fit-ch02 #dis .dis-mbtn{display:none}}
+body.fit-ch02 #dis .sh-actions .btn.ghost{flex:none;min-height:var(--btn-h);padding:0 var(--sp-4);font:var(--fw-bold) var(--fs-body) var(--font) !important}
+
+/* word search: the hint, the words and the message, then the grid, square, as big as the space left allows */
+body.fit-ch02 #wsearch .ws-side{flex:none;display:flex;flex-direction:column;gap:var(--sp-2)}
+body.fit-ch02 #wsearch .wlist{justify-content:flex-start;gap:var(--sp-1)}
+body.fit-ch02 #wsearch .wlist span{padding:2px var(--sp-2);border:2px solid var(--grid);font:var(--fw-bold) var(--fs-small-min)/1.4 var(--font)}
+body.fit-ch02 #wsearch .wlist span.done{border-color:var(--ok);color:var(--ok-text)}
+body.fit-ch02 #wsearch #wsMsg{min-height:20px;font:var(--fw-bold) var(--fs-small)/1.5 var(--font);color:var(--ink)}
+body.fit-ch02 #wsearch .ws-box{flex:1 1 auto;min-height:0;container-type:size;display:flex;justify-content:center}
+body.fit-ch02 #wsearch #ws{width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-width:none;margin:0;gap:2px !important;grid-auto-rows:1fr}
+body.fit-ch02 #wsearch #ws div{aspect-ratio:auto;min-width:0;min-height:0;border:1px solid var(--grid);font:var(--fw-bold) var(--fs-small) var(--font) !important}
+body.fit-ch02 #wsearch #ws div.found{border-color:var(--ok);color:var(--ok-text)}
+body.fit-ch02 #wsearch .sh-actions .btn.ghost{flex:1 1 auto;min-height:var(--btn-h);font:var(--fw-bold) var(--fs-body) var(--font) !important}
+
+@media(min-width:641px){
+  body.fit-ch02 #sort .bins{grid-template-columns:repeat(3,1fr)}
+  body.fit-ch02 #sort .bin{min-height:96px;flex-direction:column;justify-content:center;gap:var(--sp-1);text-align:center}
+  body.fit-ch02 #sort .bin.flash-ok::after,body.fit-ch02 #sort .bin.flash-bad::after{margin:0 auto}
+  body.fit-ch02 #sep .item-card{font-size:var(--fs-question)}
+  body.fit-ch02 #sep .tools{grid-template-columns:repeat(3,minmax(0,1fr))}
+  body.fit-ch02 #sep .tool{min-height:48px;padding:var(--sp-1) var(--sp-3);font-size:var(--fs-body-sm)}
+  body.fit-ch02 #wsearch #ws div{font-size:var(--fs-body) !important}
+}
+@media(max-width:640px){
+  body.fit-ch02 #dis .dis-set .seg button{font-size:var(--fs-small) !important}
+}
+@media(max-width:379.98px){   /* «Χρωματογραφία» on one line in a two-column tool at 360 px */
+  body.fit-ch02 #sep .tool{gap:var(--sp-1)}
+  body.fit-ch02 #sep .tool .ico{font-size:20px}
+}
+@media(max-width:1099.98px){
+  body.fit-ch02 #soFb.sh-fb{border-radius:0}
+}
+@media(max-width:1099.98px) and (max-height:799.98px){   /* small phones (360 x 740): tighter, so the verdict panel fits under the tools */
+  body.fit-ch02 #sep .sh-body{gap:var(--sp-2)}
+  body.fit-ch02 #sep .sh-body p.muted{font-size:var(--fs-small)}
+  body.fit-ch02 #sep .item-card{padding:var(--sp-2) var(--sp-3)}
+  body.fit-ch02 #sep .item-card .emo{font-size:32px}
+  /* the hint goes with the missions view; the settings make room for it there */
+  body.fit-ch02 #dis:not(.dis-mon) .sh-body>p.muted,body.fit-ch02 #dis.dis-mon .dis-set{display:none}
+}
+@media(min-width:1100px){
+  body.fit-ch02 #sort .sh-body,body.fit-ch02 #sep .sh-body{flex:0 1 auto}   /* the verdict card right under the game (mockup 08) */
+  body.fit-ch02 #sep .tools{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body.fit-ch02 #dis .sh-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:var(--sp-5);align-content:start}
+  body.fit-ch02 #dis .sh-body>p.muted,body.fit-ch02 #dis .dis-set{grid-column:1 / -1}
+  body.fit-ch02 #dis .lab{grid-column:1;grid-row:3 / 5;min-height:0}
+  body.fit-ch02 #dis #dSvg{max-height:420px}
+  body.fit-ch02 #dis #dMsg,body.fit-ch02 #dis .dis-miss{grid-column:2}
+  body.fit-ch02 #dis .dis-miss{align-self:start}
+  body.fit-ch02 #wsearch .sh-body{flex-direction:row-reverse;gap:var(--sp-5)}
+  body.fit-ch02 #wsearch .ws-side{flex:1 1 0;min-width:0}
+  body.fit-ch02 #wsearch .ws-box{flex:0 0 auto;width:min(60%,560px)}
+  body.fit-ch02 #wsearch .wlist span{font-size:var(--fs-small)}
+}
+/* fit dim5_fysiki_ch02: end */
+/* fit dim5_fysiki_ch03: begin */
+/* Φυσική Ε΄, Κεφ. 3 «Ενέργεια» (dim5_fysiki_ch03_energeia.html): its five games on the activity frame. Every rule is
+   scoped to a game section of that page: its id plus the page's class fy3 (#wsearch exists on another page too). */
+:is(#forms,#conv,#chain,#food,#wsearch).fy3 .sh-body{display:flex;flex-direction:column;gap:8px}
+:is(#forms,#conv,#chain,#food,#wsearch).fy3 .sh-body>*{flex:none;margin:0}
+:is(#forms,#conv,#chain,#food,#wsearch).fy3 .fy3-intro{font:var(--fw-semi) 14px/1.35 var(--font);color:var(--mute)}
+:is(#forms,#conv,#chain,#food,#wsearch).fy3 .sh-prog .score{white-space:nowrap}
+/* the feedback panel of conv, chain and food holds the explanation and the next button: shown while either is live;
+   once the answer is checked (next enabled) it replaces the action row */
+:is(#conv,#chain,#food).fy3 .fy3-panel:not(:has(.expl:not([style*="none"]))):not(:has(.sh-fbnav .btn:enabled)){display:none}
+:is(#conv,#chain,#food).fy3 .fy3-panel .expl{font-size:15px;line-height:1.35}
+:is(#conv,#chain,#food).fy3 .sh-fbnav .btn:disabled{display:none}
+#conv.fy3 .sh-actions{display:flex}
+#conv.fy3:has(#cvNext:enabled) .sh-actions{display:none}
+/* conv's instruction and food's reminder of the book sit under the content, in the place the panel takes while it shows */
+#conv.fy3>.fy3-intro{flex:none;margin:0;padding-top:8px}
+#food.fy3>.fy3-note{flex:none;margin:4px 0 16px}
+#conv.fy3:has(#cvFb:not([style*="none"]))>.fy3-intro,#conv.fy3:has(#cvNext:enabled)>.fy3-intro,
+#food.fy3:has(#fdFb:not([style*="none"]))>.fy3-note,#food.fy3:has(#fdNext:enabled)>.fy3-note{display:none}
+/* the auto-advancing verdict of forms: the panel itself (no action row to replace) */
+#forms.fy3 #foFb{border-radius:0;font:var(--fw-regular) 15px/1.35 var(--font)}
+/* right and wrong: a tick or a cross with the colour, never colour alone */
+#forms.fy3 .tool,#conv.fy3 .chip{position:relative}
+:is(#forms.fy3 .tool,#conv.fy3 .chip,#food.fy3 .food):is(.right,.wrong)::after{content:"";position:absolute;top:4px;right:4px;width:16px;height:16px;
+  -webkit-mask:var(--fy3-mark) center/contain no-repeat;mask:var(--fy3-mark) center/contain no-repeat}
+:is(#forms.fy3 .tool,#conv.fy3 .chip,#food.fy3 .food).right::after{background:var(--ok-text);
+  --fy3-mark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+:is(#forms.fy3 .tool,#conv.fy3 .chip,#food.fy3 .food).wrong::after{background:var(--rule-text);
+  --fy3-mark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")}
+#food.fy3 .food:is(.right,.wrong)::after{top:8px;right:8px;width:22px;height:22px}
+/* forms: the picture card flexes, the seven forms in rows of four */
+#forms.fy3 .item-card{flex:1 1 auto;min-height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:12px;border:var(--outline);border-radius:var(--r-card);background:var(--white);font:var(--fw-bold) 20px/1.25 var(--font)}
+#forms.fy3 .item-card .emo{font-size:44px;line-height:1.1}
+#forms.fy3 .item-card .btn{min-height:var(--btn-h);padding:0 32px;font:var(--btn-font)}
+#forms.fy3 .tools{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+#forms.fy3 .tool{flex:0 0 calc(33.33% - 6px);min-width:0;min-height:64px;padding:4px 2px;border:var(--outline);border-radius:var(--r-tile);font:var(--fw-bold) 14px/1.2 var(--font);overflow-wrap:anywhere}
+#forms.fy3 .tool .ico{font-size:24px;line-height:1.2}
+#forms.fy3 .tool:disabled{opacity:1;cursor:default}
+#forms.fy3 .tool.right{border-color:var(--ok);background:var(--ok-soft)}
+#forms.fy3 .tool.wrong{border-color:var(--rule);background:var(--rule-soft)}
+/* conv: the device on one line, the six forms in a 3 x 2 grid per side */
+#conv.fy3 .item-card{display:flex;align-items:center;justify-content:center;gap:12px;min-height:48px;padding:4px 12px;
+  border:var(--outline);border-radius:var(--r-card);background:var(--white);font:var(--fw-bold) 19px/1.2 var(--font)}
+#conv.fy3 .item-card .emo{display:inline;font-size:32px}
+#conv.fy3 .conv{gap:4px}
+#conv.fy3 .conv .arrow{font-size:20px;line-height:1}
+#conv.fy3 .conv h4{margin-bottom:2px}
+#conv.fy3 .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0}
+#conv.fy3 .chip{min-width:0;min-height:var(--tap);padding:4px 6px;font-size:14px;line-height:1.15}
+#conv.fy3 .sh-actions .btn{min-height:var(--btn-h)}
+/* chain: the title, the slots, the pieces */
+#chain.fy3 #chTitle{font:var(--fw-bold) 19px/1.25 var(--font);text-align:center}
+#chain.fy3 .chain-slots{min-height:52px;padding:6px}
+#chain.fy3 .chain-slots .step{padding:4px 8px;font-size:13px}
+#chain.fy3 .chain-slots .ar{font-size:16px}
+#chain.fy3 .chain-pool button{min-height:var(--tap);padding:6px 10px;font-size:14px;line-height:1.2}
+/* food: the two portions flex, the reminder of the book stays under them */
+#food.fy3 .vs{flex:1 1 auto;min-height:150px;max-height:280px;gap:8px;align-items:stretch}
+#food.fy3 .vs .or{align-self:center}
+#food.fy3 .food{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;font-size:17px;line-height:1.25}
+#food.fy3 .food .emo{font-size:44px;line-height:1.15}
+#food.fy3 .food .kj{margin-top:4px;font-size:14px}
+#food.fy3 .callout{padding:8px 12px;font-size:14px;line-height:1.35}
+/* word search: the grid takes the room left, square, as large as fits */
+/* (the fit section of dim5_fysiki_ch02 styles #wsearch without a page scope; the next three rules keep this page's
+   intro, word list and message as measured here) */
+#wsearch.fy3 .sh-body>.fy3-intro{font:var(--fw-semi) 14px/1.35 var(--font);color:var(--mute)}
+#wsearch.fy3 .wlist{justify-content:center;gap:4px}
+#wsearch.fy3 .wlist span{padding:2px 8px;font-size:12px}
+#wsearch.fy3 .sh-body>.fy3-wsbox{flex:1 1 auto;min-height:0;container-type:size;display:flex;justify-content:center;align-items:flex-start}
+#wsearch.fy3 #ws{width:min(100cqw,100cqh);max-width:none;margin:0}
+#wsearch.fy3 .sh-actions{align-items:center}
+#wsearch.fy3 #wsMsg{flex:1 1 auto;min-width:0;min-height:0;font:var(--fw-semi) 14px/1.35 var(--font);color:var(--ink)}
+#wsearch.fy3 #wsNew{flex:none;min-height:var(--btn-h)}
+@media(min-width:1100px){
+  #forms.fy3 .tool{flex-basis:calc(14.28% - 7px)}
+  #forms.fy3 #foFb{border-radius:var(--r-card)}
+  #conv.fy3 .chips{grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:480px) and (max-width:1099.98px){#forms.fy3 .tool{flex-basis:calc(25% - 6px)}}
+@media(min-width:641px) and (max-width:1099.98px){#conv.fy3 .chips{grid-template-columns:repeat(2,1fr)}}
+/* fit dim5_fysiki_ch03: end */
+/* fit dim5_mathimatika_ch10: begin */
+/* Ε΄ Μαθηματικά, Κεφ. 10 (dim5_mathimatika_ch10_ekp.html): its six games (table, frogs, blitz, mem, prob, solver) on the
+   activity frame. Κεφ. 10b uses the same section ids, so every rule starts with this page's body class. */
+.pg-dim5_mathimatika_ch10 :is(#table,#frogs,#blitz,#mem,#prob,#solver) .sh-body{display:flex;flex-direction:column;gap:8px}
+.pg-dim5_mathimatika_ch10 :is(#table,#blitz,#solver) .sh-body{padding-top:12px}
+.pg-dim5_mathimatika_ch10 :is(#blitz,#solver) .sh-body{padding-bottom:16px}
+.pg-dim5_mathimatika_ch10 .sh-body>p.muted,.pg-dim5_mathimatika_ch10 .mt-side>p.muted{flex:none;margin:0;font:var(--fw-regular) var(--fs-body-sm)/1.4 var(--font);color:var(--mute)}
+/* the feedback panels: plain text with a verdict word and, for frogs and table, the next button (.sh-fbnav) */
+.pg-dim5_mathimatika_ch10 :is(#mtFb,#frFb,#memFb,#prFb){display:block;font:var(--fw-regular) var(--fs-body-sm)/1.45 var(--font);color:var(--ink)}
+.pg-dim5_mathimatika_ch10 :is(#mtFb,#frFb) .sh-fbnav{margin-top:12px}
+.pg-dim5_mathimatika_ch10 :is(#mtAgain,#frAgain){display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--btn-h);font:var(--btn-font) !important}
+.pg-dim5_mathimatika_ch10 :is(#mtAgain,#frAgain) .icon{flex:none;width:22px;height:22px}
+/* the action row: it stays while the panel holds only a running explanation, a hint or an input error; the panel's own
+   next button (frogs, table) replaces it */
+.pg-dim5_mathimatika_ch10 :is(#table,#frogs,#mem,#prob).sh-frame .sh-actions{display:flex}
+.pg-dim5_mathimatika_ch10 #table.sh-frame:has(#mtAgain) .sh-actions,.pg-dim5_mathimatika_ch10 #frogs.sh-frame:has(#frAgain) .sh-actions{display:none}
+.pg-dim5_mathimatika_ch10 .fit-wide{flex:1 1 auto;min-height:var(--btn-h);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;
+  border:var(--outline);border-radius:var(--r-button);background:var(--white);color:var(--ink);font:var(--fw-bold) 17px var(--font);cursor:pointer}
+.pg-dim5_mathimatika_ch10 .fit-wide .icon{flex:none;width:22px;height:22px}
+.pg-dim5_mathimatika_ch10 .sh-help .icon{flex:none}
+.pg-dim5_mathimatika_ch10 #frGo:disabled{opacity:.45;cursor:default}
+/* an answer field and its label or unit, at the bottom of the content */
+.pg-dim5_mathimatika_ch10 .fit-in{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;font:var(--fw-bold) var(--fs-body)/1.3 var(--font)}
+.pg-dim5_mathimatika_ch10 .fit-in input{width:120px;min-height:var(--btn-h);text-align:center;font-weight:var(--fw-bold)}
+
+/* table: the pickers beside each other (3 x 3), the multiplication table takes the rest of the height, a square */
+.pg-dim5_mathimatika_ch10 #table .sh-body,.pg-dim5_mathimatika_ch10 #table .mt-side{gap:4px}
+.pg-dim5_mathimatika_ch10 #table .mt-side{flex:none;display:flex;flex-direction:column}
+.pg-dim5_mathimatika_ch10 #table .mt-side>p.muted{font-size:14px;line-height:1.35}
+.pg-dim5_mathimatika_ch10 #table .mt-pick{display:flex;justify-content:center;gap:16px}
+.pg-dim5_mathimatika_ch10 #table .mt-pk{display:flex;flex-direction:column;gap:4px}
+.pg-dim5_mathimatika_ch10 #table .mt-pk>b{font:var(--fw-bold) var(--fs-small)/1.2 var(--font)}
+.pg-dim5_mathimatika_ch10 #table .picker{display:grid;grid-template-columns:repeat(3,44px);gap:4px}
+.pg-dim5_mathimatika_ch10 #mtInfo{font:var(--fw-semi) var(--fs-small)/1.3 var(--font);color:var(--mute);text-align:center}
+.pg-dim5_mathimatika_ch10 #table .mt-wrap{flex:1 1 0;min-height:240px;container-type:size}
+.pg-dim5_mathimatika_ch10 #mtFb{padding-top:10px;padding-bottom:10px}
+.pg-dim5_mathimatika_ch10 #mt{width:min(100cqw,100cqh);height:min(100cqw,100cqh);max-width:none;margin:0 auto;padding:2px;gap:2px;grid-template-rows:repeat(11,1fr);
+  background:var(--white);border:var(--outline);border-radius:var(--r-tile)}
+.pg-dim5_mathimatika_ch10 #mt div{aspect-ratio:auto;min-width:0;min-height:0;border-radius:4px;font-size:clamp(12px,3.4cqmin,18px)}
+
+/* frogs: the question, the drawing (a white card), the guess */
+.pg-dim5_mathimatika_ch10 #frQ{flex:none;margin:0;font:var(--fw-bold) 20px/1.3 var(--font)}
+.pg-dim5_mathimatika_ch10 #frogs .fr-draw{flex:0 1 auto;min-height:96px;display:flex;align-items:center;padding:4px;background:var(--white);border:var(--outline);border-radius:var(--r-card);overflow:hidden}
+.pg-dim5_mathimatika_ch10 #frSvg{display:block;width:100%;height:auto;max-height:100%}
+/* the number line labels stay 12 px or more on screen (the drawing is scaled down to the card's width) */
+.pg-dim5_mathimatika_ch10 #frSvg text[font-size="13"],.pg-dim5_mathimatika_ch10 #frSvg text[font-size="16"]{font-size:19px}
+
+/* blitz: the start and end screens are a column with their button at the bottom; the round fills the content */
+.pg-dim5_mathimatika_ch10 #blBox{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px}
+.pg-dim5_mathimatika_ch10 #blBox>div:only-child{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;gap:4px}
+.pg-dim5_mathimatika_ch10 #blBox>div:only-child>p{margin:4px 0}
+.pg-dim5_mathimatika_ch10 :is(#blStart,#blAgain){width:100%;margin-top:auto;min-height:var(--btn-h);padding:0 16px !important;border-radius:var(--r-button);font:var(--btn-font) !important}
+.pg-dim5_mathimatika_ch10 #blBox .prog{height:var(--progress-h);margin:0;border-radius:4px;background:var(--grid)}
+.pg-dim5_mathimatika_ch10 #blBox .blitz-q{margin:8px 0}
+.pg-dim5_mathimatika_ch10 #blO button{min-height:var(--option-h);padding:8px;border:var(--outline);border-radius:var(--r-button)}
+.pg-dim5_mathimatika_ch10 #blO button.ok::after{content:" \2713";color:var(--ok-text)}
+.pg-dim5_mathimatika_ch10 #blO button.no::after{content:" \2717";color:var(--rule-text)}
+
+/* memory */
+.pg-dim5_mathimatika_ch10 #memGrid{flex:none;width:100%;margin:0 auto;gap:8px}
+.pg-dim5_mathimatika_ch10 #memGrid .mcard{border:var(--outline);border-radius:var(--r-tile)}
+
+/* problems: the story in a white card with its picture beside it, the answer under it */
+.pg-dim5_mathimatika_ch10 #prob .pr-card{flex:none;display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--white);border:var(--outline);border-radius:var(--r-card);
+  font:var(--fw-semi) 18px/1.4 var(--font)}
+.pg-dim5_mathimatika_ch10 #prEmo{flex:none;font-size:36px;line-height:1.1}
+
+/* solver: the three numbers in one row, the solution under them */
+.pg-dim5_mathimatika_ch10 #solver .sv-in{flex:none;display:flex;gap:8px}
+.pg-dim5_mathimatika_ch10 #solver .sv-in input{flex:1 1 0;min-width:0;width:auto;min-height:var(--btn-h);text-align:center}
+.pg-dim5_mathimatika_ch10 #sOut .formula{margin:0 0 8px}
+.pg-dim5_mathimatika_ch10 #sOut h3{margin:12px 0 4px;font:var(--fw-bold) var(--fs-heading-sm)/1.3 var(--font)}
+.pg-dim5_mathimatika_ch10 #sOut summary{min-height:var(--tap);display:flex;align-items:center}
+
+/* short phones (360 x 740): the table under the pickers at a fixed size, its legend and the intro under it in the content
+   (it scrolls there, allowed for this game only); the problem's story in body type so story, answer and feedback fit */
+@media(max-width:1099.98px) and (max-height:800px){
+  .pg-dim5_mathimatika_ch10 #table .mt-side{display:contents}
+  .pg-dim5_mathimatika_ch10 #table .mt-pick{order:1}
+  .pg-dim5_mathimatika_ch10 #table .mt-wrap{order:2;flex:none;min-height:0;container-type:inline-size}
+  .pg-dim5_mathimatika_ch10 #mt{width:min(100cqw,250px);height:min(100cqw,250px)}
+  .pg-dim5_mathimatika_ch10 #mtInfo{order:3}
+  .pg-dim5_mathimatika_ch10 #table .mt-side>p.muted{order:4}
+  .pg-dim5_mathimatika_ch10 #prob .pr-card{gap:8px;padding:8px 12px;font-size:16px;line-height:1.35}
+  .pg-dim5_mathimatika_ch10 #prEmo{font-size:28px}
+  .pg-dim5_mathimatika_ch10 #prob .sh-body>p.muted{font-size:14px;line-height:1.35}
+  .pg-dim5_mathimatika_ch10 #prFb{padding-top:10px;padding-bottom:10px;line-height:1.35}
+}
+/* tablet: one row of nine per picker, its name beside it */
+@media(min-width:700px){
+  .pg-dim5_mathimatika_ch10 #table .mt-pick{flex-direction:column;align-items:center;gap:8px}
+  .pg-dim5_mathimatika_ch10 #table .mt-pk{flex-direction:row;align-items:center;gap:12px}
+  .pg-dim5_mathimatika_ch10 #table .mt-pk>b{width:80px;font-size:var(--fs-body-sm)}
+  .pg-dim5_mathimatika_ch10 #table .picker{grid-template-columns:repeat(9,44px)}
+}
+/* the rail's width: the table beside its controls; the other games in an 800 px column */
+@media(min-width:1100px){
+  html.sh .pg-dim5_mathimatika_ch10 main>section:is(#frogs,#blitz,#mem,#prob,#solver){max-width:800px}
+  .pg-dim5_mathimatika_ch10 #table .sh-body{display:grid;grid-template-columns:288px minmax(0,1fr);gap:24px}
+  .pg-dim5_mathimatika_ch10 #table .mt-pick{align-items:flex-start}
+  .pg-dim5_mathimatika_ch10 #table .mt-pk{flex-direction:column;align-items:flex-start;gap:4px}
+  .pg-dim5_mathimatika_ch10 #table .picker{grid-template-columns:repeat(5,44px)}
+  .pg-dim5_mathimatika_ch10 #table .mt-wrap{min-height:0}
+  .pg-dim5_mathimatika_ch10 #mtInfo{text-align:left}
+}
+/* fit dim5_mathimatika_ch10: end */
+/* fit dim5_mathimatika_ch10b: begin */
+/* Ε.Κ.Π. για ειδικούς: its six own games on the activity frame. dim5_mathimatika_ch10 has sections with the same ids, so
+   every rule starts with this page's body class (fit-ch10b). #snFb is the frame's .sh-fb panel; #frFb, #prFb and #memFb
+   (class fit-fb) are drawn as the panel but sit above the action row, because they also carry hints and input errors
+   and their game needs its buttons beside them (frogs hides the row once its result, with its own next button, is shown). */
+body.fit-ch10b .sh-frame .sh-body{display:flex;flex-direction:column;gap:12px}
+body.fit-ch10b .sh-frame .sh-body>p.muted,body.fit-ch10b .sh-frame>p.muted{flex:none;margin:0;font:var(--fw-semi) var(--fs-body-sm)/1.35 var(--font);color:var(--mute)}
+body.fit-ch10b .sh-frame>p.muted{padding-top:12px}
+body.fit-ch10b .sh-frame .sh-prog .streak{font-size:15px}
+body.fit-ch10b .sh-frame .sh-prog .sh-count{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.fit-ch10b .sh-frame .big{flex:none;margin:0;font:var(--fw-bold) 22px/1.25 var(--font)}
+body.fit-ch10b .sh-actions .btn{min-height:var(--btn-h);margin:0;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+body.fit-ch10b .sh-actions .sh-skip{width:var(--btn-h);padding:0}
+body.fit-ch10b .sh-actions .sh-help{padding:0 14px;font-size:15px !important}
+body.fit-ch10b .sh-actions .fit-wide{flex:1 1 auto}
+body.fit-ch10b .sh-actions .icon,body.fit-ch10b .sh-fbnav .icon{width:22px;height:22px}
+/* an answer field and its unit, as in the mockup: a 48 px box above the action row */
+body.fit-ch10b .fit-guess{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;font:var(--fw-bold) var(--fs-body) var(--font)}
+body.fit-ch10b .fit-guess input{width:112px;min-height:48px;padding:4px 12px;border:var(--outline);border-radius:var(--r-input);background:var(--white);color:var(--ink);font:var(--fw-bold) 20px var(--font);text-align:center}
+/* the panel look for the boxes that stay above the action row */
+body.fit-ch10b .fit-fb{flex:none;max-height:45%;overflow-y:auto;margin:0 calc(-1 * var(--pad-screen));padding:12px var(--pad-screen);border:0;border-top:2px solid var(--ink);border-radius:0;background:var(--white);font:var(--fw-regular) var(--fs-body)/1.4 var(--font)}
+body.fit-ch10b .sh-fbnav .btn{gap:8px}
+body.fit-ch10b .fit-fb .sh-fbnav{margin-top:12px}
+/* secret number: question, four options, the verdict in the panel */
+body.fit-ch10b #snOpts{flex:none;display:flex;flex-direction:column;gap:8px}
+body.fit-ch10b #snOpts .opt{margin:0;min-height:56px}
+body.fit-ch10b #snOpts .opt.right::after{content:"✓";font-weight:var(--fw-bold);font-size:22px;color:var(--ok-text)}
+body.fit-ch10b #snOpts .opt.wrong::after{content:"✗";font-weight:var(--fw-bold);font-size:22px;color:var(--rule-text)}
+/* frogs: the number line is the picture region, it flexes */
+body.fit-ch10b #frSvg{flex:1 1 150px;min-height:64px;max-height:260px;width:100%;display:block}
+body.fit-ch10b #frogs:has(#frFb[style*="block"]):has(#frGo:disabled) .sh-actions{display:none}
+body.fit-ch10b #frogs:has(#frFb[style*="block"]):has(#frGo:disabled) #frFb{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+/* blitz: the box is the column; the question takes the free space, the options or the start button sit at the bottom */
+body.fit-ch10b #blBox{padding:12px 0 16px;gap:8px}
+body.fit-ch10b #blBox .blitz-top{flex:none}
+body.fit-ch10b #blBox .prog{flex:none;margin:0;background:var(--grid)}
+body.fit-ch10b #blBox .blitz-q{flex:1 1 auto;min-height:0;margin:0;display:flex;align-items:center;justify-content:center}
+body.fit-ch10b #blBox .blitz-opts{flex:none;gap:8px}
+body.fit-ch10b #blBox .blitz-opts button{min-height:72px;border-color:var(--ink)}
+body.fit-ch10b #blBox .blitz-opts button.ok::after{content:" ✓";color:var(--ok-text)}
+body.fit-ch10b #blBox .blitz-opts button.no::after{content:" ✗";color:var(--rule-text)}
+body.fit-ch10b #blBox .fit-bl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+body.fit-ch10b #blBox .fit-bl>div:first-child{margin-top:auto}
+body.fit-ch10b #blBox .fit-bl p{margin:0}
+body.fit-ch10b #blBox .fit-bl>.sh-primary{align-self:stretch;margin-top:auto;min-height:var(--btn-h)}
+/* memory: the grid is the answer area */
+body.fit-ch10b #memGrid{flex:none;width:100%;margin:0 auto}
+body.fit-ch10b #memGrid .mcard{border-color:var(--ink)}
+body.fit-ch10b #memGrid .mcard.done{border-color:var(--ok)}
+/* problems: the story card shrinks first (smaller picture) */
+body.fit-ch10b #prob .item-card{flex:none;margin:0;padding:12px 16px;text-align:left;border:var(--outline);font:var(--fw-semi) 18px/1.4 var(--font)}
+body.fit-ch10b #prob .item-card .emo{display:block;text-align:center;font-size:32px;line-height:1.2}
+@media(max-width:1099.98px) and (max-height:779.98px){
+  body.fit-ch10b .sh-frame .sh-body{gap:8px}
+  body.fit-ch10b .sh-frame .sh-body>p.muted{font-size:var(--fs-small)}
+  body.fit-ch10b .sh-frame .big{font-size:20px}
+  body.fit-ch10b #snOpts .opt{min-height:48px;padding-top:8px;padding-bottom:8px}
+  body.fit-ch10b #prob .item-card{padding:8px 12px;font-size:16px}
+  body.fit-ch10b #prob .item-card .emo{font-size:24px}
+}
+/* solver: the numbers on top, the worked solution in the body under them */
+body.fit-ch10b .fit-nums{flex:none;display:flex;gap:8px;padding:12px 0 4px}
+body.fit-ch10b .fit-nums input{flex:1 1 0;min-width:0;min-height:48px;padding:4px 8px;border:var(--outline);border-radius:var(--r-input);background:var(--white);color:var(--ink);font:var(--fw-bold) 20px var(--font);text-align:center}
+body.fit-ch10b #sOut .formula{margin:0 0 8px}
+body.fit-ch10b #sOut h3{margin:12px 0 4px;font-size:var(--fs-heading-sm)}
+body.fit-ch10b #sOut details summary{min-height:var(--tap);padding:10px 0;box-sizing:border-box}
+@media(min-width:1100px){
+  /* as mockup 08: the content does not stretch, the feedback card comes right under it */
+  body.fit-ch10b .sh-frame .sh-body{flex:0 1 auto;padding-top:12px}
+  body.fit-ch10b #frSvg{flex-basis:220px}
+  body.fit-ch10b .fit-fb{margin:12px 0 0;padding:16px 20px;border:var(--outline);border-radius:var(--r-card)}
+  body.fit-ch10b .fit-fb .sh-fbnav .btn{flex:none;padding:0 28px}
+  body.fit-ch10b #snOpts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  body.fit-ch10b #snOpts .opt{min-height:72px;font-size:20px}
+  body.fit-ch10b .big{font-size:var(--fs-question-lg)}
+}
+/* fit dim5_mathimatika_ch10b: end */
+/* fit dim3_mathimatika_en01: begin */
+/* Γ΄ Μαθηματικά, Ενότητα 1: its six games (#build, #trip, #add, #groups, #times, #robot) on the activity frame. Every
+   selector starts with the page's own class d3m-en01 on those sections. The page scripts write and show each feedback
+   box themselves (style display), with no next button in it, so the panel (.sh-fb) sits above the action row, which stays:
+   once an answer is checked, the check button goes and the next button becomes the wide primary. */
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-actions{display:flex}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-prog .score{display:none}   /* its words show beside the drawn bar (.sh-count) */
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-prog .streak{font:var(--fw-bold) 15px var(--font);white-space:nowrap}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-count{white-space:nowrap}
+:is(#build,#trip,#add,#groups,#times,#robot).d3m-en01 .sh-body{display:flex;flex-direction:column;gap:8px}
+:is(#build,#trip,#add,#groups,#times,#robot).d3m-en01 .sh-body>*{flex:none;margin:0}
+:is(#build,#trip,#add,#groups,#times,#robot).d3m-en01 p.muted{margin:0;font-size:var(--fs-body-sm);line-height:1.35}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .big{font-size:var(--fs-question);line-height:1.25}
+:is(#build,#trip,#groups).d3m-en01 .fit-err{color:var(--rule-text);font:var(--fw-semi) var(--fs-body-sm)/1.3 var(--font);text-align:center}
+:is(#build,#trip,#groups).d3m-en01 .fit-err:empty{display:none}
+/* the feedback panel: on the paper's edge below 1100 px, joined to the action row under it */
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-fb{border-radius:0;padding-bottom:12px;font:var(--fw-regular) var(--fs-body)/1.4 var(--font)}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-fb .tight{margin:4px 0;padding-left:20px}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-fb .muted{font-size:var(--fs-body-sm)}
+/* the next button: a 56 px square with its icon (its word for screen readers) until the answer is checked */
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-skip{min-height:var(--btn-h);padding:0;gap:8px;font:var(--btn-font)}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-skip .fit-t{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-skip:disabled{opacity:.4;cursor:default}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-actions .btn .icon{flex:none;width:22px;height:22px}
+:is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-help{min-height:var(--btn-h);font:var(--fw-bold) 15px var(--font) !important}
+:is(#build,#add,#groups).d3m-en01 .sh-actions .sh-primary{min-height:var(--btn-h);border:0;padding:0 16px}
+/* checked: which box tells it, per game */
+#build.d3m-en01:has(#bdFb[style*="block"]) #bdCheck,
+#add.d3m-en01:has(#adGrid .res.ok,#adGrid .res.bad) :is(#adCheck,#adHelp),
+#groups.d3m-en01:has(#grFb[style*="block"]) #grCheck,
+#robot.d3m-en01:has(#rbNext:not(:disabled)) .tf{display:none}
+#build.d3m-en01:has(#bdFb[style*="block"]) #bdNext,
+#trip.d3m-en01:has(#tpFb[style*="block"]) #tpNext,
+#add.d3m-en01:has(#adGrid .res.ok,#adGrid .res.bad) #adNext,
+#groups.d3m-en01:has(#grFb[style*="block"]) #grNext,
+#robot.d3m-en01:has(#rbNext:not(:disabled)) #rbNext{flex:1 1 auto;width:auto;border:0;background:var(--btn-bg);color:var(--btn-fg);font-size:var(--fs-button) !important}
+#build.d3m-en01:has(#bdFb[style*="block"]) #bdNext .fit-t,
+#trip.d3m-en01:has(#tpFb[style*="block"]) #tpNext .fit-t,
+#add.d3m-en01:has(#adGrid .res.ok,#adGrid .res.bad) #adNext .fit-t,
+#groups.d3m-en01:has(#grFb[style*="block"]) #grNext .fit-t,
+#robot.d3m-en01:has(#rbNext:not(:disabled)) #rbNext .fit-t{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto}
+@media(max-width:1099.98px){
+  /* the panel and the action row under it read as one white sheet at the bottom */
+  #build.d3m-en01:has(#bdFb[style*="block"]) .sh-actions,
+  #trip.d3m-en01:has(#tpFb[style*="block"]) .sh-actions,
+  #add.d3m-en01:has(#adFb[style*="block"]) .sh-actions,
+  #groups.d3m-en01:has(#grFb[style*="block"]) .sh-actions,
+  #robot.d3m-en01:has(#rbFb[style*="block"]) .sh-actions{margin:0 calc(-1 * var(--pad-screen));padding:0 var(--pad-screen) 16px;background:var(--white)}
+}
+
+/* Χτίζω αριθμούς: the blocks are the drawing that flexes; their size (--u, the plate's side) follows the room left */
+#build.d3m-en01 #bdQ{text-align:center}
+#build.d3m-en01 #bdToast{position:relative;height:0;z-index:2}
+#build.d3m-en01 #bdToast .toast{position:absolute;left:8px;right:8px;top:8px;margin:0;text-align:center}
+#build.d3m-en01 .blocks{flex:1 1 0;min-height:72px;margin:0;padding:12px;container-type:size;justify-content:center;align-content:center;align-items:flex-end;gap:8px 16px;overflow:hidden;
+  --u:clamp(18px,min(45cqh,10cqw - 4px),54px)}
+#build.d3m-en01 .sh-body>p.muted{text-align:center;font:var(--fw-semi) var(--fs-small)/1.3 var(--font)}
+#build.d3m-en01 #bdCtl .pvbtns .col>span{font:var(--fw-semi) var(--fs-small)/1.2 var(--font)}
+#build.d3m-en01 #bdCtl .pvbtns button{width:52px !important;height:var(--tap)}
+#build.d3m-en01 #bdCtl>p{margin:4px 0 0 !important}
+#build.d3m-en01 #bdCtl .row{gap:4px;flex-wrap:nowrap}
+#build.d3m-en01 #bdCtl .row input{width:72px !important;min-width:0;min-height:var(--tap);padding:0 4px;border:var(--outline);border-radius:var(--r-input);font-size:22px !important;text-align:center}
+#build.d3m-en01 #bdCtl .row input#bdIn{width:132px !important}
+#build.d3m-en01 #bdCtl p.note{margin:4px 0 0;font-size:var(--fs-small)}
+@media(max-width:399.98px){#build.d3m-en01 #bdCtl .pvbtns button{width:44px !important}#build.d3m-en01 #bdCtl .row input{width:62px !important}}
+
+/* Ταξίδι: the book's table on a white card; the answer row is the primary */
+#trip.d3m-en01 .fit-table{overflow-x:auto;background:var(--white);border:var(--outline);border-radius:var(--r-card);padding:4px}
+#trip.d3m-en01 .dist{width:100%;border-collapse:collapse}
+#trip.d3m-en01 .dist td,#trip.d3m-en01 .dist th{padding:3px 2px !important;line-height:1.25}
+#trip.d3m-en01 #tpIn .row{justify-content:center;gap:8px}
+#trip.d3m-en01 #tpIn input{min-height:var(--btn-h);border:var(--outline);border-radius:var(--r-input)}
+#trip.d3m-en01 #tpGo{min-height:var(--btn-h);padding:0 24px;border:0;border-radius:var(--r-button);font:var(--btn-font) !important}
+#trip.d3m-en01 #tpIn .btn.ghost{flex:1 1 140px;min-height:var(--btn-h);font-size:17px !important}
+#trip.d3m-en01 .sh-actions{justify-content:flex-end}
+@media(min-width:600px){#trip.d3m-en01 .dist{font-size:15px}}
+
+/* Πρόσθεση μπάσκετ: the level switch in the progress line; the sum in columns is the drawing */
+#add.d3m-en01 .sh-prog{flex-wrap:wrap;row-gap:4px}
+#add.d3m-en01 .sh-prog .sh-level{margin-left:auto}
+#add.d3m-en01 .sh-prog .sh-level button{padding:0 12px !important;font-size:14px !important}
+@media(max-width:599.98px){#add.d3m-en01 .sh-prog .sh-line{flex:1 1 100%}}   /* the bar on its own line, the switch beside the words */
+#add.d3m-en01 .sh-body{align-items:center;text-align:center}
+#add.d3m-en01 .sh-body>p.muted{text-align:left;align-self:stretch}
+#add.d3m-en01 .scoreboard{align-self:stretch;flex-wrap:nowrap}
+#add.d3m-en01 .scoreboard div{flex:1 1 0;min-width:0;padding:4px 8px;font-size:13px;line-height:1.3}
+#add.d3m-en01 .scoreboard div br{display:none}
+#add.d3m-en01 .scoreboard div b{font-size:22px;line-height:1.2}
+#add.d3m-en01 .colsum{margin:0 auto}
+#add.d3m-en01 .colsum input.carry{width:44px;height:44px;min-height:var(--tap);font-size:20px}   /* a touch target: 44 px */
+#add.d3m-en01 .sh-fb{text-align:left}
+@media(max-height:900px){
+  #add.d3m-en01 .colsum{font-size:28px;row-gap:2px}
+  #add.d3m-en01 .colsum .c{height:34px}
+  #add.d3m-en01 .colsum .hd{height:16px}
+  #add.d3m-en01 .colsum input.res{height:44px;font-size:28px}
+}
+@media(max-height:760px){
+  /* small phones, once the sum is checked: the worked steps in the panel take the place of the intro line */
+  #add.d3m-en01:has(#adGrid .res.ok,#adGrid .res.bad) .sh-body>p.muted{display:none}
+  #add.d3m-en01 .sh-fb{font-size:var(--fs-body-sm);line-height:1.35}
+  #add.d3m-en01 .sh-body{gap:4px}
+  #add.d3m-en01 .colsum .c:not(.hd){height:32px}
+}
+
+/* Ομάδες: the groups are the drawing that flexes; the emoji size follows the room left and how many groups there are */
+#groups.d3m-en01 #grQ{text-align:center}
+#groups.d3m-en01 #grBox{flex:1 1 0;min-height:64px;margin:0;container-type:size;align-content:center;gap:8px;overflow:hidden;--e:clamp(14px,min(9cqh,7cqw),26px)}
+#groups.d3m-en01 #grBox:has(>.grp:nth-child(5)){--e:clamp(12px,min(6.5cqh,4.5cqw),26px);gap:6px}
+#groups.d3m-en01 #grBox .grp{font-size:var(--e);max-width:100%;padding:4px 8px}
+#groups.d3m-en01 #grBox:has(>.grp:nth-child(5)) .grp{padding:2px 6px;line-height:1.05}
+#groups.d3m-en01 #grBox .grp>span{font-size:max(var(--fs-small-min),calc(var(--e) * .55)) !important}
+#groups.d3m-en01 #grBox .grp>span:first-child{font-size:calc(var(--e) * 1.3) !important}
+#groups.d3m-en01 .fit-in{display:flex;justify-content:center}
+#groups.d3m-en01 #grIn{width:132px !important;min-height:var(--btn-h);border:var(--outline);border-radius:var(--r-input);text-align:center}
+
+/* Πρωτάθλημα προπαίδειας: the box is the frame's column; the keypad is the primary, at the bottom */
+#times.d3m-en01>p.muted{flex:none;margin:12px 0 0}
+#times.d3m-en01 #ttBox{gap:8px;padding:8px 0 16px;overflow-x:hidden;overflow-y:auto}
+#times.d3m-en01 #ttBox>*{flex:none}
+#times.d3m-en01 #ttBox>.row:first-child .score{font-size:var(--fs-small)}
+#times.d3m-en01 #ttBox>.row:first-child .streak{font-size:17px}
+#times.d3m-en01 #ttBox>.prog{height:var(--progress-h);margin:0;background:var(--grid)}
+#times.d3m-en01 #ttBox>.prog>div{background:var(--cover) !important}
+#times.d3m-en01 #ttBox .ttq{margin:0}
+#times.d3m-en01 #ttBox #ttFb{order:1;flex:1 0 auto}
+#times.d3m-en01 #ttBox #ttFb .expl{margin:0;padding:8px 12px;background:var(--white);border:var(--outline)}
+#times.d3m-en01 #ttBox .keypad{order:2;width:100%;margin:0 auto}
+#times.d3m-en01 #ttBox .keypad button{min-height:var(--tap)}
+#times.d3m-en01 #ttBox .tables{margin-top:4px}
+#times.d3m-en01 #ttBox .tables button{min-height:60px}
+#times.d3m-en01 #ttBox .fit-end{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#times.d3m-en01 #ttBox .fit-end .btn{flex:1 1 160px;min-height:var(--btn-h)}
+#times.d3m-en01 #ttBox .fit-end .sh-primary{border:0}
+@media(max-height:760px){
+  #times.d3m-en01 #ttBox .keypad button{padding:8px 0}
+  #times.d3m-en01 #ttBox .ttans{font-size:34px;min-height:44px}
+}
+
+/* Ο ρομπότ κάνει λάθη: Σωστό and Λάθος are the primary, in the action row */
+#robot.d3m-en01 .robot{flex:1 1 auto;align-content:center}
+#robot.d3m-en01 .sh-actions .tf{flex:1 1 auto;display:flex;gap:8px;margin:0}
+#robot.d3m-en01 .sh-actions .tf .btn{flex:1 1 0;min-width:0 !important;min-height:var(--btn-h);padding:0 8px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font:var(--fw-bold) 18px var(--font) !important}
+#robot.d3m-en01 .sh-actions .tf .btn .icon{stroke-width:3}
+@media(max-height:760px){#robot.d3m-en01 .robot .bot{font-size:56px}}
+
+@media(min-width:1100px){
+  :is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-fb{border-radius:var(--r-card);padding:16px 20px}
+  #times.d3m-en01 #ttBox{padding-bottom:24px}
+}
+/* fit dim3_mathimatika_en01: end */
+/* fit dim3_mathimatika_en01b: begin */
+/* The six games of dim3_mathimatika_en01b (sections with class fit-en01b, set only by that page). Progress line: the
+   score bar (D6), the count, the streak and, where the game has levels, the level switch on its own line below 1100 px.
+   Body: the intro line and the game's drawing in a card that grows. The message box (#mlFb, #arFb, ...) is the feedback
+   panel, above the action row: a hint or an input error leaves the row as it is; after a verdict (class fit-done) the row
+   keeps only the next button, wide, so panel and next button read as one. The box stays in the DOM when hidden (inline
+   display:none), so the contract's :has rule would hide the row for good: the first rule keeps it. */
+html.sh :is(#mul,#area,#add,#prob,#robot).fit-en01b.sh-frame>.sh-actions{display:flex}
+html.sh .fit-en01b .fit-prog{flex-wrap:wrap;row-gap:8px}
+html.sh .fit-en01b .fit-prog .sh-line{flex:1 1 48px}
+html.sh .fit-en01b .fit-prog .seg.sh-level{display:flex !important;flex:1 1 100%;width:auto}
+html.sh .fit-en01b .fit-prog .sh-level button{flex:1 1 0;min-width:0;min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  padding:4px 6px !important;font:var(--fw-bold) 13px/1.2 var(--font) !important;text-align:center}
+html.sh .fit-en01b .fit-prog .sh-level button+button{border-left:2px solid var(--ink)}
+html.sh .fit-en01b .sh-level .icon{flex:none;width:16px;height:16px}
+html.sh .fit-en01b .sh-body{display:flex;flex-direction:column;gap:12px}
+html.sh .fit-en01b .sh-body>p.muted{flex:none;margin:0;font:var(--fw-regular) var(--fs-body-sm)/1.35 var(--font);color:var(--mute)}
+html.sh .fit-en01b .fit-stage{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px !important;border-radius:var(--r-card)}
+/* action row: icons, the next button as a square; after a verdict only the next button, wide, with its word */
+html.sh .fit-en01b .sh-help .icon{flex:none}
+html.sh .fit-en01b .sh-skip .fit-nl{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html.sh .fit-en01b.fit-done>.sh-actions>:not(.sh-skip),html.sh #robot.fit-en01b.fit-done .fit-tf{display:none}
+html.sh .fit-en01b.fit-done .sh-body>p.muted{display:none}   /* the intro line rests while a verdict shows; it is back with the next round */
+html.sh .fit-en01b.fit-done .sh-skip{flex:1 1 auto;width:auto;gap:8px;border-color:var(--btn-bg);background:var(--btn-bg);color:var(--btn-fg);font:var(--btn-font)}
+html.sh .fit-en01b.fit-done .sh-skip .fit-nl{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto}
+html.sh .fit-en01b .sh-skip:disabled{opacity:.45;cursor:default}
+/* the feedback panel (the game's message box) */
+html.sh .fit-en01b>.sh-fb{max-height:45%;padding-top:12px;padding-bottom:12px;border-radius:0;font:var(--fw-regular) var(--fs-body-sm)/1.35 var(--font)}
+html.sh .fit-en01b>.sh-fb ul.tight{margin:4px 0;padding-left:20px}
+html.sh .fit-en01b>.sh-fb ul.tight li{margin:2px 0}
+/* a long verdict gives way first and scrolls inside the panel, so the drawing with its marked answer stays in view */
+html.sh .fit-en01b.fit-done>.sh-fb{flex:0 1 auto;min-height:72px}
+html.sh .fit-en01b.fit-done>.sh-body{flex-shrink:0}   /* worst case, level 3 of #add at 360 x 740: 92 + 340 + 72 + 72 = 576 of 608 px */
+/* short phones: the intro line also rests while a hint or an input error shows (class fit-msg, set by the page) */
+@media(max-width:1099.98px) and (max-height:760px){html.sh .fit-en01b.fit-msg .sh-body>p.muted{display:none}}
+html.sh .fit-en01b.fit-done>.sh-actions{margin:0 calc(-1 * var(--pad-screen));padding:0 var(--pad-screen) 16px;background:var(--white)}
+/* column operations (#mlGrid, #adGrid): 44 px rows, carry circles 44 px (touch targets) */
+html.sh .fit-en01b .colop{margin:0 auto;row-gap:2px;font-size:30px}
+html.sh .fit-en01b .colop .c{height:36px}   /* number cells are text; the inputs keep 44 px and more */
+html.sh .fit-en01b .colop .hd{height:18px;font:var(--fw-semi) var(--fs-small) var(--font);color:var(--mute)}
+html.sh .fit-en01b .colop input.res{width:44px !important;height:48px !important;font-size:28px !important}
+html.sh .fit-en01b .colop input.carry{width:44px;height:44px;min-height:44px;font-size:20px}
+/* the events of «Μεγάλες προσθέσεις»: one row of white tiles */
+html.sh #add.fit-en01b .scoreboard{width:100%;flex-wrap:nowrap;gap:8px}
+html.sh #add.fit-en01b .scoreboard div{flex:1 1 0;min-width:0;padding:4px 6px;background:var(--white);color:var(--mute);border:var(--outline);border-radius:var(--r-tile);
+  font:var(--fw-semi) var(--fs-small-min)/1.25 var(--font)}
+html.sh #add.fit-en01b .scoreboard div b{font-size:22px;line-height:1.2;color:var(--ink);font-weight:var(--fw-bold)}
+/* «Το κόλπο της ανάλυσης» */
+html.sh #area.fit-en01b #arQ{margin:0;text-align:center}
+html.sh #area.fit-en01b .fit-arrow{display:flex;width:100%}
+html.sh #area.fit-en01b #arBox{flex:1;min-width:0;margin:0}
+html.sh #area.fit-en01b .area .part{min-width:64px;padding:8px 4px}
+html.sh #area.fit-en01b .area input{width:100%;max-width:84px;min-height:var(--tap)}
+html.sh #area.fit-en01b #arSumRow{justify-content:center;gap:6px;font:var(--fw-bold) 20px var(--font)}
+html.sh #area.fit-en01b #arT{width:110px;min-height:48px;padding:4px;text-align:center;font:var(--fw-bold) 22px var(--font);border:2px solid var(--subj);border-radius:var(--r-input)}
+/* «Προβλήματα» */
+html.sh #prob.fit-en01b .item-card{flex:1 0 auto;margin:0;padding:12px;display:flex;flex-direction:column;justify-content:center;gap:8px;text-align:left;
+  font:var(--fw-semi) clamp(18px,3vw,22px)/1.35 var(--font);border:var(--outline);border-radius:var(--r-card)}
+html.sh #prob.fit-en01b #prEmo{font-size:40px;line-height:1;text-align:center}
+html.sh #prob.fit-en01b .fit-ans{flex:none;justify-content:center;flex-wrap:nowrap}
+html.sh #prob.fit-en01b #prIn{width:160px;min-height:var(--btn-h);text-align:center;font:var(--fw-bold) 24px var(--font) !important;border:var(--outline);border-radius:var(--r-input)}
+html.sh #prob.fit-en01b #prUnit{font:var(--fw-bold) 18px var(--font)}
+/* «Μπιπ 2.0»: Σωστό and Λάθος are the action row */
+html.sh #robot.fit-en01b .robot{flex:1 0 auto;gap:8px 12px}
+html.sh #robot.fit-en01b .robot .bot{font-size:56px;line-height:1}
+html.sh #robot.fit-en01b .robot .bubble{padding:12px 16px;border:var(--outline);border-radius:var(--r-card);font-size:clamp(26px,7vw,40px)}
+html.sh #robot.fit-en01b .fit-tf{flex:1 1 auto;display:flex;gap:8px;margin:0}
+html.sh #robot.fit-en01b .fit-tf .btn{flex:1 1 0;min-width:0 !important;min-height:var(--btn-h);padding:0 8px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font:var(--btn-font);font-size:var(--fs-button) !important}
+html.sh #robot.fit-en01b .fit-tf .btn .icon{flex:none;width:22px;height:22px;stroke-width:3}
+/* «Ανάβαση»: the mountain shrinks first; the question, its messages and the answer row under it */
+html.sh #mount.fit-en01b #mtSvg{flex:1 1 0;min-height:80px;max-height:300px;width:100%;display:block}
+/* the step numbers (drawn at 11 units): 22 units are 12 px and more once the drawing is scaled to a 328 px phone column */
+html.sh #mount.fit-en01b #mtSvg text[font-size="11"]{font-size:22px;font-weight:var(--fw-bold);transform:translateY(8px)}
+html.sh #mount.fit-en01b #mtPlay{flex:none;text-align:center}
+html.sh #mount.fit-en01b #mtPlay p.score{margin:4px 0 0;font:var(--fw-semi) var(--fs-small) var(--font);color:var(--mute)}
+html.sh #mount.fit-en01b #mtPlay .ttq{margin:4px 0;font-size:clamp(28px,8vw,40px)}
+html.sh #mount.fit-en01b #mtPlay .big{margin:4px 0 12px}
+html.sh #mount.fit-en01b #mtPlay .sh-actions{flex-wrap:nowrap;align-items:stretch}
+html.sh #mount.fit-en01b #mtIn{flex:1 1 0;min-width:0;width:auto;min-height:var(--btn-h);text-align:center;font:var(--fw-bold) 28px var(--font) !important;border:var(--outline);border-radius:var(--r-input)}
+html.sh #mount.fit-en01b #mtGo{flex:1 1 0}
+html.sh #mount.fit-en01b #mtAgain{width:100%}
+html.sh #mount.fit-en01b #mtFb .expl{margin:0;padding:8px 12px;text-align:left;background:var(--white);border:var(--outline);border-radius:var(--r-tile);font-size:var(--fs-body-sm)}
+@media(min-width:1100px){
+  html.sh .fit-en01b .fit-prog .seg.sh-level{flex:0 1 auto}
+  html.sh .fit-en01b .fit-prog .sh-level button{padding:4px 12px !important;font-size:14px !important}
+  html.sh .fit-en01b.fit-done>.sh-actions{margin:0;padding:12px 0 16px;background:none}
+}
+/* fit dim3_mathimatika_en01b: end */
+/* fit dim3_mathimatika_en01c: begin */
+/* Η δοκιμή με τον σταυρό: its six games (#shrink, #guided, #detect, #full, #pick, #boss) on the activity frame. The body is
+   a column: the intro line, the picture card (it flexes and shrinks first), the answer fields. The page's feedback box
+   (.sh-fb) shows and hides by its style, not by [hidden], so it sits between the body and the action row and the row
+   stays; once a round is answered (read from the page: marked inputs, disabled buttons, the chain in #shFb) the row keeps
+   only the next button, wide, so feedback and next read as one panel. */
+:is(#shrink,#guided,#detect,#full,#pick,#boss) .sh-body{display:flex;flex-direction:column;gap:8px;padding:0 0 8px}
+:is(#shrink,#guided,#detect,#full,#pick,#boss) .sh-body>p.muted{margin:0;font-size:15px;line-height:1.35}
+:is(#shrink,#guided,#detect,#full,#pick,#boss) .fit-pic{flex:1 1 auto;min-height:0;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;padding:12px !important;text-align:center}
+:is(#shrink,#guided,#detect,#full,#pick) .bigop{margin:0;font-size:clamp(28px,7vw,40px);line-height:1.15}
+:is(#shrink,#guided,#detect,#full,#pick) .sh-actions{display:flex}
+:is(#shrink,#guided,#detect,#full,#pick) .sh-fb{font-size:15px;line-height:1.4}
+@media(max-width:1099.98px){
+  :is(#shrink,#guided,#detect,#full,#pick) .sh-fb{margin-top:0;border-radius:0;padding-bottom:12px}
+  :is(#shrink,#guided,#detect,#full,#pick) .sh-fb:not([style*="none"])+.sh-actions{margin:0 calc(-1 * var(--pad-screen));padding:0 var(--pad-screen) 16px;background:var(--white)}
+}
+:is(#shrink,#guided,#detect,#full,#pick) .sh-skip{gap:8px}
+:is(#shrink,#guided,#detect,#full,#pick) .sh-skip .icon{order:2}
+:is(#shrink,#guided,#detect,#full,#pick) .fit-nx{display:none}
+/* answered: the next button takes the row */
+:is(#shrink:has(#shFb:not([style*="none"]) .shrink),#guided:has(#gdCross input.ok,#gdCross input.bad),#detect:has(#dtOk:disabled),#full:has(#flCheck:disabled),#pick:has(#pkOpts .choice.ok)) .sh-skip{flex:1 1 auto;width:auto;padding:0 16px;background:var(--btn-bg);border-color:var(--btn-bg);color:var(--btn-fg);font:var(--btn-font)}
+:is(#shrink:has(#shFb:not([style*="none"]) .shrink),#guided:has(#gdCross input.ok,#gdCross input.bad),#detect:has(#dtOk:disabled),#full:has(#flCheck:disabled),#pick:has(#pkOpts .choice.ok)) .fit-nx{display:inline}
+#shrink:has(#shFb:not([style*="none"]) .shrink) #shGo,#guided:has(#gdCross input.ok,#gdCross input.bad) :is(#gdHelp,#gdCheck),#detect:has(#dtOk:disabled) .verdict,#full:has(#flCheck:disabled) #flCheck{display:none}
+/* the verdict word: a tick or a cross before it, never colour alone; green and red as text colours */
+:is(#shFb,#gdFb,#dtFb,#flFb,#pkFb)>b:first-child[style*="--ok"],#bsFb .expl>b:first-child[style*="--ok"]{color:var(--ok-text) !important}
+:is(#shFb,#gdFb,#dtFb,#flFb,#pkFb)>b:first-child[style*="--bad"],#bsFb .expl>b:first-child[style*="--bad"]{color:var(--rule-text) !important}
+:is(#shFb,#gdFb,#dtFb,#flFb,#pkFb)>b:first-child[style*="--ok"]::before,:is(#pkOpts .choice.ok,#gdCross>div:has(input.ok),#dtCross>div:has(input.ok),#flCross>div:has(input.ok))::after,
+:is(#shFb,#gdFb,#dtFb,#flFb,#pkFb)>b:first-child[style*="--bad"]::before,:is(#pkOpts .choice.no,#gdCross>div:has(input.bad),#dtCross>div:has(input.bad),#flCross>div:has(input.bad))::after{
+  content:"";display:inline-block;width:20px;height:20px;margin-right:4px;vertical-align:-4px;background:currentColor;-webkit-mask:var(--fit-mark) center/contain no-repeat;mask:var(--fit-mark) center/contain no-repeat}
+:is(#shFb,#gdFb,#dtFb,#flFb,#pkFb)>b:first-child[style*="--ok"]::before,:is(#pkOpts .choice.ok,#gdCross>div:has(input.ok),#dtCross>div:has(input.ok),#flCross>div:has(input.ok))::after{
+  --fit-mark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+:is(#shFb,#gdFb,#dtFb,#flFb,#pkFb)>b:first-child[style*="--bad"]::before,:is(#pkOpts .choice.no,#gdCross>div:has(input.bad),#dtCross>div:has(input.bad),#flCross>div:has(input.bad))::after{
+  --fit-mark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")}
+:is(#gdCross,#dtCross,#flCross)>div:has(input.ok,input.bad)::after{position:absolute;top:2px;right:2px;margin:0;width:16px;height:16px}
+:is(#gdCross,#dtCross,#flCross)>div:has(input.ok)::after,#pkOpts .choice.ok::after{color:var(--ok-text)}
+:is(#gdCross,#dtCross,#flCross)>div:has(input.bad)::after,#pkOpts .choice.no::after{color:var(--rule-text)}
+#pkOpts .choice::after{margin:0 0 0 4px}
+/* the cross: 44 px fields, labels of 12 px under them */
+:is(#gdCross,#dtCross,#flCross).cross{grid-template-columns:repeat(2,minmax(84px,112px));grid-template-rows:auto auto;margin:0 auto}
+:is(#gdCross,#dtCross,#flCross).cross>div{padding:6px 4px;gap:4px}
+:is(#gdCross,#dtCross,#flCross).cross input{width:52px;height:48px;font-size:28px;border:var(--outline);border-radius:var(--r-input)}
+:is(#gdCross,#dtCross,#flCross).cross input.ok{border-color:var(--ok)}
+:is(#gdCross,#dtCross,#flCross).cross input.bad{border-color:var(--rule)}
+/* Μηχανή των ψηφίων: the level choice (three parts) on its own line on a phone, the answer field under the picture */
+#shrink .sh-prog{flex-wrap:wrap;row-gap:8px}
+#shrink #shLvl{flex:1 1 100%;display:flex !important}
+#shrink #shLvl button{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 6px !important;font-size:14px !important}
+#shrink #shLvl .icon{flex:none;width:18px;height:18px}
+@media(min-width:600px){#shrink #shLvl{flex:0 0 auto}}
+#shrink .fit-gear{font-size:40px;line-height:1}
+#shrink .fit-ans{display:flex;justify-content:center}
+#shrink #shIn{width:96px;min-height:56px;font-size:32px !important;text-align:center;border:var(--outline);border-radius:var(--r-input)}
+/* Ντετέκτιβ: the two verdict buttons are the primary group of the action row */
+#detect .verdict{flex:1 1 auto;display:flex;flex-wrap:nowrap;gap:8px;margin:0}
+#detect .verdict .btn{flex:1 1 0;min-width:0;min-height:var(--btn-h);display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;background:var(--white);color:var(--ink);border:var(--outline);font:var(--fw-bold) 16px/1.15 var(--font) !important}
+#detect .verdict .icon{flex:none;width:20px;height:20px;stroke-width:3}
+#detect #dtOk .icon{color:var(--ok-text)}
+#detect #dtBad .icon{color:var(--rule-text)}
+#detect #dtWho{margin:0;font-size:15px}
+/* answered on a short screen: the round's instruction steps aside for the longest feedback (up to eight lines) */
+@media(max-height:799.98px){#detect:has(#dtOk:disabled) .sh-body>p.muted{display:none}}
+/* Λύνω και ελέγχω: the column operation and the cross side by side when they fit, else stacked */
+#full #flStep{margin:0;font-size:13px;text-align:center}
+#full .fit-pic{gap:4px;padding:8px !important}
+/* step 2 (the cross is shown): the step line #flStep says what to do, the intro line steps aside for the height */
+#full:has(#flCross:not([style*="none"])) .sh-body>p.muted{display:none}
+#full .fit-work{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px}
+/* here the cross sits under the column operation: its labels beside the fields, so it takes less height */
+#full #flCross.cross>div{flex-direction:row;gap:6px;padding:4px 6px}
+#full #flCross.cross input{height:44px}
+#full .sh-fb{font-size:14px;line-height:1.35;padding-top:12px}
+#full #flCross.cross{grid-template-columns:auto auto}
+#full #flCross.cross small{max-width:92px;text-align:left}
+/* answered on a short screen: the longest feedback (up to eight lines) needs the room; the step line, done by now, steps
+   aside and the finished work is drawn tighter (fields stay 44 px, text 12 px or more) */
+@media(max-height:799.98px){
+  #full:has(#flCheck:disabled) #flStep{display:none}
+  #full:has(#flCheck:disabled) #flGrid .colop .c{height:24px}
+  #full:has(#flCheck:disabled) #flGrid .colop .hd{height:14px}
+  #full:has(#flCheck:disabled) #flCross.cross>div{padding:2px 6px}
+}
+#full #flGrid .colop{margin:0;gap:2px 4px;font-size:26px}
+#full #flGrid .colop .c{width:44px !important;height:28px}
+#full #flGrid .colop .hd{height:16px;font-size:12px}
+#full #flGrid .colop input.res{width:44px !important;height:44px !important;font-size:26px !important;border:var(--outline);border-radius:var(--r-input)}
+#full #flGrid .colop input.res.ok{border-color:var(--ok)}
+#full #flGrid .colop input.res.bad{border-color:var(--rule)}
+#full #flGrid .colop input.carry{width:44px;height:44px;font-size:18px}
+/* Ποιο περνάει: the three results are the primary group, under the picture; next on the right until answered */
+#pick #pkOpts{grid-template-columns:repeat(3,1fr);gap:8px;margin:0}
+#pick #pkOpts .choice{min-height:var(--option-h);padding:8px 4px;display:inline-flex;align-items:center;justify-content:center;border:var(--outline);border-radius:var(--r-button);font-size:24px}
+#pick #pkOpts .choice.ok{border-color:var(--ok)}
+#pick #pkOpts .choice.no{border-color:var(--rule)}
+#pick #pkHint{margin:0;font-size:15px}
+#pick .sh-actions{justify-content:flex-end}
+/* Η πρόκληση του βασιλιά: the doors, then #bsPlay (question, answer row, feedback) as written by the page */
+#boss #bsDoors{font-size:26px;letter-spacing:2px;line-height:1.2}
+#boss #bsPlay{width:100%;display:flex;flex-direction:column;gap:8px}
+#boss #bsPlay p{margin:0}
+#boss #bsPlay .big{font-size:22px;line-height:1.3}
+#boss #bsPlay .row{flex-wrap:nowrap;margin-top:4px !important}
+#boss #bsIn{flex:none;width:96px !important;min-height:var(--btn-h);font-size:28px !important;text-align:center}
+#boss #bsGo,#boss #bsAgain{flex:1 1 auto;min-height:var(--btn-h);padding:0 12px;font:var(--btn-font) !important}
+#boss #bsFb .expl{margin:0;text-align:center}
+#boss #bsFb:empty{display:none}
+#boss .hearts{flex:none;font-size:18px;letter-spacing:0}
+/* fit dim3_mathimatika_en01c: end */
+/* fit generic games (engine, _template, dim5_istoria_ch13): begin */
+/* The engine's games on the activity frame (engine.js _gframe: memory, sort, blitz, wordsearch, order, cloze, source) and an
+   Engine.build page's own game that joins the frame. Every rule is scoped to .gm-frame (the section) or .gm-<type> (the box). */
+.gm-frame .sh-body{display:flex;flex-direction:column;gap:var(--sp-2)}
+.gm-frame .gm-main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:var(--sp-3)}
+.gm-frame .gm-main>*{flex:none;margin:0}
+.gm-frame .gm-intro{flex:none;margin:0;font:var(--fw-semi) 14px/1.35 var(--font);color:var(--mute)}
+.gm-frame:has(.sh-fb:not(:empty):not(.sh-fbkeep)) .gm-intro{display:none}   /* the intro rests while a verdict shows; it is back with the next step */
+.gm-frame .gm-q{margin:0;font:var(--fw-bold) 22px/1.25 var(--font)}
+.gm-frame .gm-lbl{margin:0;font:var(--fw-bold) 14px/1.35 var(--font);color:var(--ink)}
+.gm-frame .sh-actions:empty{display:none}
+.gm-frame .sh-prog .score:empty{display:none}
+.gm-frame .sh-count,.gm-frame .sh-prog .score{white-space:nowrap}
+.gm-frame .sh-prog .score .icon{width:18px;height:18px;margin-right:2px;vertical-align:-4px;stroke-width:3;color:var(--ok-text)}
+.gm-new{flex:none;width:var(--tap);height:var(--tap);padding:0;display:inline-flex;align-items:center;justify-content:center;
+  border:var(--outline);border-radius:12px;background:var(--white);color:var(--ink);cursor:pointer}
+.gm-new .icon{width:22px;height:22px}
+.gm-frame .sh-actions .sh-primary,.gm-frame .sh-fbnav .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.gm-frame .sh-actions .sh-primary:disabled{opacity:.45;cursor:default}
+.gm-frame .sh-primary .icon,.gm-frame .sh-fbnav .icon{flex:none;width:22px;height:22px}
+.gm-frame .sh-fb .expl{font-size:var(--fs-body-sm);line-height:1.4}
+.gm-frame .sh-fb .expl .sh-v{margin-right:2px}
+.gm-frame .sh-mark .icon{width:20px;height:20px}
+.gm-frame .gm-mid{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-1);text-align:center}
+.gm-frame .gm-mid p{margin:0}
+.gm-frame .gm-main>div[style*="text-align:center"]{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center}   /* the end of a play */
+.gm-frame .gm-main>div[style*="text-align:center"] p{margin:4px 0 0}
+/* an Engine.build page's own game on the frame (the template's example): its question and its answer field */
+.gm-frame .sh-body>.big{margin:0}
+.gm-frame .sh-body>input[type=text]{box-sizing:border-box;width:100%;max-width:240px;min-height:var(--btn-h);padding:0 16px;border:var(--outline);border-radius:var(--r-input);
+  background:var(--white);color:var(--ink);font:var(--fw-bold) 24px var(--font)}
+.gm-frame .sh-fbkeep{font:var(--fw-semi) var(--fs-body-sm)/1.35 var(--font);color:var(--rule-text)}
+
+/* order: the pieces numbered as they are tapped; after «Έλεγχος» the right order, each place marked */
+.gm-order .ord-pool{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.gm-order .ord-chip{min-height:var(--tap);padding:6px 12px 6px 8px;gap:10px;border:var(--outline);border-radius:var(--r-tile);background:var(--white);
+  color:var(--ink);font:var(--fw-bold) 16px/1.25 var(--font)}
+.gm-order .ord-chip .ord-n{flex:none;box-sizing:border-box;width:28px;min-width:28px;height:28px;border:2px dashed var(--locked);background:var(--white);color:var(--ink)}
+.gm-order .ord-chip.on{border-color:var(--cover);background:var(--cover-soft)}
+.gm-order .ord-chip.on .ord-n{border:0;background:var(--cover);color:var(--white)}
+.gm-order .ord-right{counter-reset:ord;min-height:0;margin:0;padding:0;border:0;background:none;display:flex;flex-direction:column;flex-wrap:nowrap;gap:6px}
+.gm-order .ord-right li.ord-done{display:block;position:relative;min-height:36px;padding:5px 32px 5px 40px;border:2px solid;border-radius:var(--r-tile);
+  font:var(--fw-bold) 15px/1.25 var(--font);overflow-wrap:anywhere}
+.gm-order .ord-right li.ord-done::before{counter-increment:ord;content:counter(ord);position:absolute;left:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--white);font-size:13px}
+.gm-order .ord-right .ord-sub{display:inline}
+.gm-order .ord-right li.right{border-color:var(--ok);background:var(--ok-soft)}
+.gm-order .ord-right li.wrong{border-color:var(--rule);background:var(--rule-soft)}
+.gm-order .ord-right .sh-mark{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+.gm-order .ord-right li.right .sh-mark{color:var(--ok-text)}
+.gm-order .ord-right li.wrong .sh-mark{color:var(--rule-text)}
+.gm-order .ord-cap{display:inline-block;margin:0 0 0 6px;padding:0 6px;font-size:12px;line-height:1.5;vertical-align:1px}
+.gm-order .ord-you{display:inline-block;margin-left:6px;font:var(--fw-semi) 13px/1.3 var(--font);color:var(--rule-text)}
+
+/* cloze and source: the choices stacked */
+.gm-frame .gm-opts{display:flex;flex-direction:column;gap:var(--sp-2)}
+.gm-frame .gm-opts .opt{margin:0;min-height:var(--tap);padding:8px 14px;gap:8px}
+.gm-cloze .gm-opts .opt{min-height:56px}
+.gm-frame .opt-t{min-width:0;overflow-wrap:anywhere}
+
+/* source: the text is a reading pane that takes the room left above the question (it scrolls on its own when longer) */
+.gm-source .gm-main{gap:var(--sp-2)}
+.gm-source .src-box{flex:1 1 auto;min-height:120px;overflow-y:auto;margin:0;padding:8px 12px;border:var(--outline);border-left:6px solid var(--cover);border-radius:var(--r-tile);background:var(--white)}
+.gm-source:has(.sh-fb:not(:empty):not(.sh-fbkeep)) .src-box{min-height:0}
+.gm-source .src-n{margin:0;font:var(--fw-semi) 12px/1.4 var(--font);color:var(--mute)}
+.gm-source .src-title{margin:0 0 4px;font:var(--fw-bold) 16px/1.3 var(--font);color:var(--ink)}
+.gm-source .src-text{font-size:16px;line-height:1.45}
+.gm-source .src-text p:last-child{margin-bottom:0}
+.gm-source .src-link{margin:4px 0 0}
+.gm-source .src-link a{color:var(--cover)}
+.gm-source .src-qa{display:flex;flex-direction:column;gap:var(--sp-2)}
+.gm-source .gm-q{font-size:19px}
+
+/* sort: the item, then the bins (a tick or a cross on the bin tapped and the right one) */
+.gm-sort .item-card{flex:1 1 auto;min-height:96px;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 16px;
+  border:var(--outline);border-radius:var(--r-card);background:var(--white);color:var(--ink);font:var(--fw-bold) 20px/1.3 var(--font);overflow-wrap:anywhere}
+.gm-sort .item-card .emo{font-size:40px;line-height:1.1}
+.gm-sort .bins{margin:0;display:grid;grid-template-columns:repeat(var(--bins,2),minmax(0,1fr));gap:var(--sp-2)}
+.gm-sort .bins[hidden]{display:none}
+.gm-sort .bin{position:relative;min-width:0;min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px;
+  border:var(--outline);border-radius:var(--r-tile);background:var(--white);color:var(--ink);font:var(--fw-bold) 16px/1.2 var(--font);overflow-wrap:anywhere}
+.gm-sort .bin .ico{display:block;font-size:26px;line-height:1.1}
+.gm-sort .bin:disabled{cursor:default;opacity:1}
+.gm-sort .bin.right{border-color:var(--ok);background:var(--ok-soft);box-shadow:inset 0 0 0 2px var(--ok)}
+.gm-sort .bin.wrong{border-color:var(--rule);background:var(--rule-soft);box-shadow:inset 0 0 0 2px var(--rule)}
+.gm-sort .bin .sh-mark{position:absolute;top:4px;right:4px}
+.gm-sort .bin.right .sh-mark{color:var(--ok-text)}
+.gm-sort .bin.wrong .sh-mark{color:var(--rule-text)}
+@media(max-width:479.98px){
+  .gm-sort .bins[style*="--bins:3"]{grid-template-columns:1fr}
+  .gm-sort .bins[style*="--bins:3"] .bin{min-height:52px;flex-direction:row;gap:8px}
+}
+
+/* memory: the cards fill the room left, a tick on a found pair, a cross on a pair that does not match */
+.gm-mem .mem{flex:1 1 auto;min-height:0;width:100%;max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-auto-rows:minmax(44px,1fr);gap:var(--sp-2)}
+.gm-mem .mcard{aspect-ratio:auto;min-width:0;min-height:0;padding:4px 6px;border:var(--outline);border-radius:var(--r-tile);background:var(--cover);color:transparent;
+  font:var(--fw-bold) 13px/1.2 var(--font);overflow:hidden;overflow-wrap:anywhere}
+.gm-mem .mcard.up{background:var(--white);color:var(--ink)}
+.gm-mem .mcard.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok-text)}
+.gm-mem .mcard.miss{background:var(--rule-soft);border-color:var(--rule)}
+.gm-mem .mcard .sh-mark{position:absolute;top:2px;right:2px}
+.gm-mem .mcard .sh-mark .icon{width:16px;height:16px}
+.gm-mem .mcard.done .sh-mark{color:var(--ok-text)}
+.gm-mem .mcard.miss .sh-mark{color:var(--rule-text)}
+.gm-mem .mem[hidden]{display:none}
+.gm-mem .mem-end{display:flex;flex-direction:column;gap:var(--sp-2);padding:12px 16px;border:var(--outline);border-radius:var(--r-card);background:var(--white)}
+.gm-mem .mem-pairs{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font:var(--fw-semi) 16px/1.3 var(--font)}
+@media(min-width:480px){.gm-mem .mem{grid-template-columns:repeat(4,minmax(0,1fr))}.gm-mem .mcard{font-size:15px}}
+
+/* blitz: the seconds left beside the line, the question, four answers */
+.gm-blitz .sh-count{font:var(--fw-bold) 17px var(--font);color:var(--ink)}
+.gm-blitz .sh-count.low{color:var(--rule-text)}
+.gm-blitz .blitz-ico{font-size:48px;line-height:1.1}
+.gm-blitz .blitz-q{flex:1 1 auto;margin:0;display:flex;align-items:center;justify-content:center;text-align:center;font:var(--fw-bold) clamp(24px,7vw,40px)/1.2 var(--font)}
+.gm-blitz .blitz-opts{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.gm-blitz .blitz-opts button{position:relative;min-height:64px;padding:8px;border:var(--outline);border-radius:var(--r-tile);background:var(--white);color:var(--ink);
+  font:var(--fw-bold) 18px/1.2 var(--font);cursor:pointer}
+.gm-blitz .blitz-opts button.ok{border-color:var(--ok);background:var(--ok-soft)}
+.gm-blitz .blitz-opts button.no{border-color:var(--rule);background:var(--rule-soft)}
+.gm-blitz .blitz-opts .sh-mark{position:absolute;top:4px;right:4px}
+.gm-blitz .blitz-opts .ok .sh-mark{color:var(--ok-text)}
+.gm-blitz .blitz-opts .no .sh-mark{color:var(--rule-text)}
+
+/* word search: the hint, the words (a tick on a found one), the grid square and as large as the room left */
+.gm-ws .wlist{justify-content:flex-start;gap:4px}
+.gm-ws .wlist span{display:inline-flex;align-items:center;gap:2px;padding:2px 8px;border:2px solid var(--grid);border-radius:999px;background:var(--white);
+  font:var(--fw-bold) 13px/1.4 var(--font)}
+.gm-ws .wlist span.done{border-color:var(--ok);background:var(--ok-soft);color:var(--ok-text)}
+.gm-ws .wlist .sh-mark .icon{width:14px;height:14px}
+.gm-ws .ws-box{flex:1 1 auto;min-height:0;container-type:size;display:flex;justify-content:center}
+.gm-ws .ws-grid{width:min(100cqw,100cqh);height:min(100cqw,100cqh);display:grid;gap:2px;grid-auto-rows:1fr;user-select:none}
+.gm-ws .ws-grid div{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--grid);border-radius:4px;background:var(--white);
+  font:var(--fw-bold) clamp(12px,4.2cqmin,22px) var(--font);cursor:pointer}
+.gm-ws .ws-grid div.sel{background:#ffe9a8;border-color:#e0b02f}
+.gm-ws .ws-grid div.found{background:var(--ok-soft);border-color:var(--ok);color:var(--ok-text)}
+
+/* short phones (360 x 740): tighter, so six long pieces and their check button fit one screen */
+@media(max-width:1099.98px) and (max-height:799.98px){
+  .gm-frame .gm-main{gap:var(--sp-2)}
+  .gm-frame .gm-q{font-size:20px}
+  .gm-order .ord-pool{gap:6px}
+  .gm-order .ord-chip{padding:4px 10px 4px 6px;font-size:15px}
+  .gm-order:has(.ord-right) .gm-q{display:none}   /* after «Έλεγχος»: the right order and the verdict need the room */
+  .gm-order .ord-right{gap:4px}
+  .gm-order .ord-right li.ord-done{padding-top:3px;padding-bottom:3px;font-size:14px}
+  .gm-frame .sh-fb .expl{font-size:14px;line-height:1.35}
+}
+@media(min-width:1100px){
+  .gm-frame .gm-q{font-size:26px}
+  .gm-order .sh-body,.gm-cloze .sh-body{flex:0 1 auto}   /* the verdict card right under the game (mockup 08) */
+  .gm-order .ord-chip{font-size:17px}
+  .gm-frame .gm-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .gm-frame .gm-opts .opt{min-height:64px;font-size:18px}
+  .gm-source .gm-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:24px}
+  .gm-source .src-box{min-height:0}
+  .gm-source .src-qa{align-self:start}
+  .gm-source .gm-opts{grid-template-columns:1fr}
+  .gm-sort .bin{min-height:96px;font-size:18px}
+  .gm-mem .mcard{font-size:17px}
+  .gm-blitz .blitz-opts button{min-height:88px;font-size:22px}
+}
+/* fit generic games (engine, _template, dim5_istoria_ch13): end */

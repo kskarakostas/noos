@@ -1,0 +1,80 @@
+/* tokens.css: the round 3 design tokens (docs/audits/noos_round3_brief_2026-11-18.md, section 4) and the self-hosted font.
+   Linked first in the head of every page, _template.html, and the hub (index.html), which loads no engine.css.
+   Every colour, size and radius of the new design comes from the one :root block below; engine.css maps its older
+   variables onto these where the meaning is the same.
+   Font: Commissioner 400, 600, 800 (SIL Open Font License 1.1, fonts/OFL.txt), Greek and Latin subsets in woff2, taken
+   from the npm package @fontsource/commissioner 5.3.0. No request leaves the site. Glyphs outside the two subsets
+   (arrows, math signs, emoji) fall back to the system font. tools/build_single.py drops the six font rules below: the
+   self-contained copies travel without the font files and use the system font. */
+
+@font-face{font-family:Commissioner;font-style:normal;font-weight:400;font-display:swap;src:url(fonts/commissioner-greek-400-normal.woff2) format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:Commissioner;font-style:normal;font-weight:600;font-display:swap;src:url(fonts/commissioner-greek-600-normal.woff2) format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:Commissioner;font-style:normal;font-weight:800;font-display:swap;src:url(fonts/commissioner-greek-800-normal.woff2) format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:Commissioner;font-style:normal;font-weight:400;font-display:swap;src:url(fonts/commissioner-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Commissioner;font-style:normal;font-weight:600;font-display:swap;src:url(fonts/commissioner-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Commissioner;font-style:normal;font-weight:800;font-display:swap;src:url(fonts/commissioner-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  /* colour (4.1); right and wrong always come with a tick or a cross, never colour alone */
+  --cover:#1E4DB7;          /* top bar, rail, login and end-of-round background, active state, Μαθηματικά */
+  --cover-soft:#E8EEFB;     /* the active item of the bottom bar */
+  --cover-text:#C9D8F7;     /* secondary text on the cover */
+  --ink:#14213D;            /* text, 2 px outlines, primary buttons, the spine */
+  --paper:#FDFDFB;          /* content background */
+  --white:#FFFFFF;          /* cards and the label on paper */
+  --grid:#DCE6F5;           /* squared paper lines, bar tracks */
+  --mute:#4A5A78;           /* secondary text, 4.5:1 on paper and white */
+  --rule:#D62839;           /* the label's double rule, wrong answers, the gift */
+  --rule-text:#B01F2E;      /* "wrong" text on white */
+  --rule-soft:#FDE7EA;      /* wrong option fill */
+  --star:#FFC93C;           /* stars, reward fills, the primary button on the end-of-round screen */
+  --ok:#1F8A5B;             /* correct, done */
+  --ok-text:#17694A;        /* green text on white */
+  --ok-soft:#E6F4EC;        /* right option fill */
+  --locked:#9AA9C4;         /* dashed outlines of locked things */
+  --locked-fill:#F2F5FB;    /* their fill */
+  /* subject covers: notebook tiles and schedule cards, keyed by the catalog's subject key */
+  --cover-fysiki:#C2571A;
+  --cover-mathimatika:#1E4DB7;
+  --cover-istoria:#6B3FA0;
+
+  /* type (4.2): one family, three weights */
+  --font:Commissioner,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --fw-regular:400; --fw-semi:600; --fw-bold:800;
+  --fs-question:24px;       /* activity question, 24 to 28 px, 800 */
+  --fs-question-lg:28px;
+  --fs-question-xl:36px;    /* the laptop quiz */
+  --fs-title:17px;          /* screen title in the label, 800 */
+  --fs-context:11px;        /* the line above it, 600 */
+  --fs-heading:17px;        /* section heading, 16 to 17 px, 800 */
+  --fs-heading-sm:16px;
+  --fs-body:16px;           /* body, 15 to 16 px, 400 or 600 */
+  --fs-body-sm:15px;
+  --fs-small:13px;          /* small label, 12 to 13 px, 600; never below 12 px */
+  --fs-small-min:12px;
+  --fs-button:19px;         /* primary button, 800 */
+
+  /* shape and spacing (4.3) */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px;
+  --pad-screen:16px;
+  --line-w:2px;
+  --outline:2px solid var(--ink);          /* cards, tiles, inputs; no drop shadows */
+  --r-button:14px; --r-tile:12px; --r-input:12px; --r-card:16px; --r-label:6px;
+  --label-rule:3px double var(--rule);     /* top and bottom edge of the label, and nothing else */
+  --grid-size:24px;
+  --paper-grid:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+
+  /* component sizes (3, 4.5) */
+  --tap:44px;               /* smallest touch target */
+  --bar-h:64px;             /* top bar */
+  --bottom-bar-h:68px;
+  --rail-w:272px;           /* 1100 px and wider */
+  --tile-h:60px;
+  --option-h:64px;          /* quiz options, stacked */
+  --progress-h:8px;
+  --spine-w:8px;            /* notebook tile */
+
+  /* the one primary button style (decision R2-3) */
+  --btn-h:56px; --btn-bg:var(--ink); --btn-fg:var(--white);
+  --btn-font:var(--fw-bold) var(--fs-button)/1.2 var(--font);
+}

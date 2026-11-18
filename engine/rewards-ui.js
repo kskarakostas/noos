@@ -10,6 +10,8 @@
     badge: 'Νέο παράσημο: ',
     questDone: 'Ολοκλήρωσες την αποστολή της ημέρας! +1 ⭐',
     questTitle: '🎯 Αποστολή της ημέρας',
+    questTitleShell: 'Αποστολή της ημέρας',
+    questDoneShort: 'Η αποστολή της ημέρας έγινε!',
     questHit: (n, label) => 'Κάνε ' + n + ' σωστές: ' + label,
     questList: label => 'Ανέβασε την πρόοδο: ' + label,
     questCards: (n, label) => 'Μάθε ' + n + ' νέες κάρτες: ' + label,
@@ -17,11 +19,11 @@
     testIn: n => 'Διαγώνισμα σε ' + n + ' μέρες',
     testToday: 'Διαγώνισμα σήμερα!',
     testTomorrow: 'Διαγώνισμα αύριο!',
-    bossNudge: 'Δοκίμασε το 👹 Τελικό τέρας',
+    bossNudge: 'Δοκίμασε το Τελικό τέρας',
     sound: 'Ήχος',
     bossRule: (n, pass) => n + ' ερωτήσεις. Με ' + pass + ' σωστές το νικάς!',
-    bossGo: 'Στη μάχη! ⚔️',
-    bossAgain: 'Νέα μάχη 🔁',
+    bossGo: 'Στη μάχη!',
+    bossAgain: 'Νέα μάχη',
     bossBest: (best, total) => 'Καλύτερο σκορ: ' + best + ' / ' + total,
     bossBeaten: '🏆 Το έχεις νικήσει!',
     bossQ: (i, n) => 'Ερώτηση ' + i + ' / ' + n,
@@ -38,8 +40,11 @@
     bossLost: 'Σχεδόν!',
     bossEmpty: 'Δεν υπάρχουν ακόμα ερωτήσεις για το τέρας.',
     bossRetry: 'Ξανά μόνο τα λάθη',
-    bossPractice: '🎯 Εξάσκηση στα λάθη',
+    bossPractice: 'Εξάσκηση στα λάθη',
     bossPracticeNote: 'Δεν μετράει στη μάχη.',
+    bossWin: pass => 'Με ' + pass + ' σωστές νικάς το τέρας.',
+    bossTrophy: 'Το έχεις νικήσει!',
+    bossSticker: 'Τελικό τέρας',
     bossPracticeLeft: (s, n) => 'Σωστά τώρα: ' + s + ' από ' + n + '. Δες ξανά όσα έμειναν.',
     bossPracticeAll: 'Τα διόρθωσες όλα! Τώρα σε αληθινή μάχη.',
     bossHeartsRule: h => 'Έχεις ' + h + (h === 1 ? ' καρδιά' : ' καρδιές') + '. Κάθε λάθος κοστίζει μία.',
@@ -47,7 +52,7 @@
     bossHeartLost: n => 'Μια καρδιά λιγότερη. ' + (n === 1 ? 'Έμεινε 1.' : 'Έμειναν ' + n + '.'),
     bossNoHearts: 'Τελείωσαν οι καρδιές σου!',
     bossLocked: n =>'Το τέρας ξεκλειδώνει όταν παίξεις ακόμα ' + (n === 1 ? '1 δραστηριότητα' : n + ' δραστηριότητες') + '.',
-    next: label => '▶ Συνέχισε: ' + label,
+    next: label => 'Συνέχισε: ' + label,
     planNotStarted: 'Αυτό το κεφάλαιο δεν έχει ξεκινήσει ακόμα στην τάξη.',
   };
 
@@ -62,6 +67,9 @@
   /* global PG_ID, PG_ROWS, shuffle */
   const pageId = () => (typeof PG_ID === 'string' ? PG_ID : null);
   const pageRows = () => (typeof PG_ROWS !== 'undefined' && Array.isArray(PG_ROWS) ? PG_ROWS : []);
+  // H6 (W8): a link to the hub (index.html) always, except in a self-contained copy (tools/build_single.py sets
+  // window.NOOS_SINGLE); the same rule as the engine's home link (Engine.shell.hubLink)
+  const hubHere = () => !(window.NOOS_SINGLE === true);
   const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
   const today = () => R().dayKey(new Date());
@@ -121,15 +129,19 @@
     });
   }
 
-  function soundToggle(host) {
+  // opts.icon (the chapter shell and the hub): the sound-on and sound-off icons of engine/icons.js instead of the emoji;
+  // rewards.css shows the one of the state (class is-on). Without engine/icons.js the emoji stay.
+  function soundToggle(host, opts) {
     const rw = R();
     if (!rw || !host) return null;
     const b = el('button', 'rw-snd');
     b.type = 'button';
     b.setAttribute('aria-label', TXT.sound);   // fixed name; the state is in aria-pressed
     b.title = TXT.sound;
+    const svg = opts && opts.icon && window.Icons && typeof Icons.svg === 'function' ? Icons.svg('sound-off') + Icons.svg('sound-on') : '';
     const paint = on => {
-      b.textContent = on ? '🔈' : '🔇';
+      if (svg) { if (!b.firstChild) b.innerHTML = svg; b.classList.toggle('is-on', on); }   // static sprite markup, no stored data
+      else b.textContent = on ? '🔈' : '🔇';
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     };
     let fam = null;
@@ -252,7 +264,7 @@
   // the quest is today's. PLAN_WAIT_MS is only a safety net for a request that neither loads nor fails: the quest is then
   // built with what has arrived, and kept for the day.
   const PLAN_WAIT_MS = 3000;
-  const PLAN_FILES = [['PLAN', 'plan.js'], ['NOOS_UNITS', 'units.js']];
+  const PLAN_FILES = [['PLAN', 'plan.js?v=0269878cb6'], ['NOOS_UNITS', 'units.js?v=0269878cb6']];
   // planUsed, unitsUsed: what was handed to Rewards.usePlan on settling
   let planSettled = false, planAsked = false, planUsed = null, unitsUsed = null;
   const planWaiters = [];
@@ -317,9 +329,9 @@
         try { if (window.Sync.boot({ config: window.NOOS_SYNC }).status === 'off') return; } catch (e) { console.error(e); return; }
         ready();
       };
-      if (window.Sync) start(true); else addScript('engine/sync.js', start);
+      if (window.Sync) start(true); else addScript('engine/sync.js?v=0269878cb6', start);
     };
-    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js', boot);
+    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js?v=0269878cb6', boot);
   }
   // A chapter page: a pull that changed this page's progress reloads the engine's live store through its own storage
   // listener (as for a write from another tab), then the strip, countdown and guide follow.
@@ -365,6 +377,8 @@
     if (!st.tasks.length) { if (old) old.remove(); return null; }
     const box = el('div', 'rw-quest' + (st.allDone ? ' all' : ''));
     box.id = 'rwQuest';
+    const slot = document.getElementById('shSlotQuest');   // the chapter home of the shell (engine.js Engine.shell)
+    if (slot) { questTrail(box, st.tasks, st.allDone, pid); if (old) old.replaceWith(box); else slot.appendChild(box); return box; }
     box.appendChild(el('span', 'rw-quest-h', TXT.questTitle + (st.allDone ? ' ✓' : '')));
     const list = el('div', 'rw-quest-list');
     // only this page's tasks get a chip; the tasks of other pages collapse into one summary chip at the end
@@ -384,8 +398,7 @@
     }
     if (rest.length) {
       const left = rest.filter(t => !t.done).length, allOk = left === 0, text = TXT.questElsewhere(allOk ? rest.length : left);
-      let hub = false;   // the hub sets hub_seen; same signal as the engine's home link
-      try { hub = !!localStorage.getItem('hub_seen'); } catch (e) { hub = false; }
+      const hub = hubHere();
       const chip = el(hub ? 'a' : 'span', 'rw-task rw-more' + (allOk ? ' done' : ''));
       if (hub) chip.href = 'index.html';
       chip.setAttribute('aria-label', text + (allOk ? ' ✓' : ''));
@@ -396,11 +409,51 @@
     }
     box.appendChild(list);
     if (old) old.replaceWith(box);
+    else if (slot) slot.appendChild(box);
     else {
       const h = document.querySelector('header');
       if (h) h.insertAdjacentElement('afterend', box); else document.body.insertBefore(box, document.body.firstChild);
     }
     return box;
+  }
+  // The chapter start view's mission (round 3, W3; brief 4.5 and D9, R2-2): one short row, the trail (one 32 px step per task
+  // in quest order, done a filled star, the next one outlined blue with its number, later ones dashed, joined by a path and
+  // ending in the 36 px gift; the hub's .hub-step, .hub-link and .hub-gift) and one line for the next task. Each step has
+  // class rw-task, a step of another page also rw-more. The trail is one image for screen readers, its label says it all.
+  function questTrail(box, tasks, allDone, pid) {
+    box.classList.add('rw-qtrail');
+    const ico = (n, size) => (window.Icons && typeof Icons.svg === 'function' ? Icons.svg(n, { size }) : '');   // static sprite markup
+    const tipOf = t => {
+      const label = typeof t.label === 'string' ? t.label : String(t.key), target = Number(t.target) || 0;
+      return t.type === 'hit' ? TXT.questHit(target, label) : t.key === 'cards' && target > 1 ? TXT.questCards(target, label) : TXT.questList(label);
+    };
+    const trail = el('div', 'rw-trail');
+    let seen = false, prevDone = false;
+    tasks.forEach((t, i) => {
+      if (i) trail.appendChild(el('span', 'hub-link' + (prevDone ? ' on' : '')));
+      const cls = t.done ? 'done' : seen ? 'later' : (seen = true, 'next');
+      const s = el('span', 'hub-step rw-task ' + cls + (t.pageId !== pid ? ' rw-more' : ''));
+      if (t.done) s.innerHTML = ico('star', 18); else s.textContent = String(i + 1);
+      trail.appendChild(s);
+      prevDone = !!t.done;
+    });
+    trail.appendChild(el('span', 'hub-link' + (prevDone ? ' on' : '')));
+    const gift = el('span', 'hub-gift' + (allDone ? ' got' : ''));
+    gift.innerHTML = ico('gift', 22);
+    trail.appendChild(gift);
+    trail.querySelectorAll('span').forEach(s => s.setAttribute('aria-hidden', 'true'));
+    const next = tasks.find(t => !t.done) || null, here = next && next.pageId === pid;
+    const done = tasks.filter(t => t.done).length;
+    const line = allDone ? TXT.questDoneShort : !next ? '' : here
+      ? tipOf(next) + ' (' + Math.min(Number(next.count) || 0, Number(next.target) || 0) + '/' + (Number(next.target) || 0) + ')'
+      : TXT.questElsewhere(tasks.filter(t => !t.done && t.pageId !== pid).length);
+    trail.setAttribute('role', 'img');
+    trail.setAttribute('aria-label', TXT.questTitleShell + ': ' + done + ' από ' + tasks.length + '. ' + line);
+    const hub = hubHere();
+    const say = el(!allDone && next && !here && hub ? 'a' : 'span', 'rw-qsay', line);
+    if (say.tagName === 'A') say.href = 'index.html';
+    else say.setAttribute('aria-hidden', 'true');   // the trail's label already says it (a link stays reachable)
+    box.append(trail, say);
   }
 
   /* ---------- test countdown in the header ---------- */
@@ -415,7 +468,8 @@
     if (n === null) return drop();
     const box = el('div', 'rw-count' + (n <= 1 ? ' soon' : ''));
     box.id = 'rwCount';
-    box.appendChild(el('span', 'rw-count-t', '📅 ' + (n === 0 ? TXT.testToday : n === 1 ? TXT.testTomorrow : TXT.testIn(n))));
+    const slot = document.getElementById('shSlotCount');   // the chapter home of the shell: no emoji as an interface icon
+    box.appendChild(el('span', 'rw-count-t', (slot ? '' : '📅 ') + (n === 0 ? TXT.testToday : n === 1 ? TXT.testTomorrow : TXT.testIn(n))));
     const rows = pageRows();
     const bossTab = document.querySelector('#tabs button[data-t="fboss"]');
     const max = rw.countedRows(rows).length * 3 + (bossTab ? 3 : 0);
@@ -423,10 +477,12 @@
     if (bossTab && rw.pageStars(live, rows) < max) {
       const b = el('button', 'rw-nudge', TXT.bossNudge);
       b.type = 'button';
+      if (eng && typeof eng._icon === 'function') b.insertAdjacentHTML('afterbegin', eng._icon('play'));   // static sprite markup
       b.onclick = () => bossTab.click();
       box.appendChild(b);
     }
     if (old) old.replaceWith(box);
+    else if (slot) slot.appendChild(box);
     else { const h = document.querySelector('header'); if (!h) return null; h.appendChild(box); }
     return box;
   }
@@ -434,21 +490,29 @@
   /* ---------- page guide: the «Συνέχισε» button and the final boss lock ---------- */
   const livePg = () => (window.PG && typeof PG.store === 'function' ? PG.store() : {});
   const tabBtns = () => [...document.querySelectorAll('#tabs button[data-t]')];
-  // {unlocked, left} of this page's final boss; the test date (Rewards.testDateFor, as in countdown) counts only on a kid page
+  const shellOf = () => { const eng = E(); return eng && eng.shell && eng.shell.ready ? eng.shell : null; };
+  // {unlocked, left} of this page's final boss. Round 3 (W3): the learning path decides (Engine.shell.path, Rewards.pathState:
+  // open at level 4); `left` stays 0, the reason is the shell's text (Engine.shell.whyText). Without the shell, the old rule
+  // (Rewards.bossUnlock; the test date counts only on a kid page).
   function lockState() {
-    const rw = R(), eng = E(), pid = pageId();
+    const rw = R(), eng = E(), pid = pageId(), sh = shellOf();
+    if (sh && sh.path) return { unlocked: !sh.locked('fboss'), left: 0 };
     const testDate = eng && eng.kid && pid ? rw.testDateFor(eng.kid, pid) : null;
     return rw.bossUnlock({ rows: pageRows(), progress: livePg(), today: today(), testDate });
   }
-  // the tab button «Συνέχισε» opens now, or null
+  // the tab button «Συνέχισε» opens now, or null; with the learning path, Engine.shell.nextTab (never a locked tab)
   function nextBtn(st) {
-    const tabs = tabBtns();
-    const id = R().nextTab({ rows: pageRows(), progress: livePg(), tabs: tabs.map(b => b.dataset.t), bossUnlocked: st.unlocked });
+    const tabs = tabBtns(), sh = shellOf(), viaPath = sh ? sh.nextTab() : undefined;
+    const id = viaPath !== undefined ? viaPath
+      : R().nextTab({ rows: pageRows(), progress: livePg(), tabs: tabs.map(b => b.dataset.t), bossUnlocked: st.unlocked });
     return tabs.find(b => b.dataset.t === id) || null;
   }
-  // a «Συνέχισε» button that taps the tab itself, so the tab's own handler and hooks run
+  // a «Συνέχισε» button that taps the tab itself, so the tab's own handler and hooks run; with the shell, the play icon and
+  // the tab's name without its emoji (Engine.shell.name)
   function nextButton(tab) {
-    const b = el('button', 'rw-next-btn', TXT.next(tab.textContent.trim()));
+    const eng = E(), sh = eng && eng.shell && eng.shell.ready ? eng.shell : null;
+    const b = el('button', 'rw-next-btn', TXT.next(sh ? sh.name(tab.textContent) : tab.textContent.trim()));
+    if (sh) { b.classList.add('sh-primary'); b.insertAdjacentHTML('afterbegin', eng._icon('play')); }   // static sprite markup
     b.type = 'button';
     b.onclick = () => tab.click();
     return b;
@@ -471,8 +535,12 @@
     const box = el('div', 'rw-plannote');
     box.id = 'rwPlanNote';
     box.setAttribute('role', 'status');
-    const at = document.getElementById('rwNext') || row.closest('nav') || row;
-    at.parentNode.insertBefore(box, at);
+    const slot = document.getElementById('shSlotNote');   // the chapter home of the shell: above «Συνέχισε» and the tiles
+    if (slot) slot.appendChild(box);
+    else {
+      const at = document.getElementById('rwNext') || row.closest('nav') || row;
+      at.parentNode.insertBefore(box, at);
+    }
     setTimeout(() => { box.textContent = TXT.planNotStarted; }, 0);
     return box;
   }
@@ -486,15 +554,19 @@
     planNote(row);
     const st = lockState(), was = lockedNow;
     lockedNow = !st.unlocked;
-    document.querySelectorAll('#tabs button[data-t="fboss"], #msheet button[data-t="fboss"]').forEach(b => b.classList.toggle('rw-locked', lockedNow));
+    document.querySelectorAll('#tabs button[data-t="fboss"]').forEach(b => b.classList.toggle('rw-locked', lockedNow));
     if (bossView && !bossView.busy() && (lockedNow || was !== lockedNow)) bossView.intro();
+    // the shell's tiles and rail rows draw the lock (Engine.shell.refresh reads bossLock below)
+    try { const eng = E(); if (eng && eng.shell && typeof eng.shell.refresh === 'function') eng.shell.refresh(); } catch (e) { console.error(e); }
     const tab = nextBtn(st);
     const old = document.getElementById('rwNext');
     if (!tab) { if (old) old.remove(); return null; }
     const box = el('div', 'rw-next');
     box.id = 'rwNext';
     box.appendChild(nextButton(tab));
+    const slot = document.getElementById('shSlotNext');   // the chapter home of the shell
     if (old) old.replaceWith(box);
+    else if (slot) slot.appendChild(box);
     else { const at = row.closest('nav') || row; at.parentNode.insertBefore(box, at); }
     return box;
   }
@@ -777,6 +849,7 @@
     const rw = R(), eng = E(), box = document.getElementById('fbossBox');
     if (!rw || !eng || !box || !window.PG) return;
     bossOn = true;
+    if (typeof eng._round === 'function') eng._round(box);   // the activity frame of the shell (engine-ui.css)
     const pid = pageId(), who = rw.bossFor(pid);
     const pool = eng.bossItems || { quiz: [], tf: [] };
     const seen = eng.seenItems || null;   // audit L6: items seen in this page visit; the fight prefers the others
@@ -806,8 +879,10 @@
       }
     }
 
+    const fit = reset => { if (typeof eng._fit === 'function') eng._fit(box, reset); };   // engine.js: the answered state fits (G2)
     function intro() {
       const list = rw.bossRound(pool.quiz, pool.tf);
+      fit(true);
       box.replaceChildren();
       const card = el('div', 'rw-boss-intro');
       card.appendChild(face('', 'idle', true));   // the name is the heading right below
@@ -816,7 +891,8 @@
       const st = lockState();
       if (!st.unlocked) {   // locked: the lock text and the «Συνέχισε» action instead of the start button
         card.classList.add('rw-boss-locked');
-        card.appendChild(el('p', 'rw-boss-rule', TXT.bossLocked(st.left)));
+        const sh = shellOf();
+        card.appendChild(el('p', 'rw-boss-rule', sh && sh.path ? sh.whyText(sh.path, sh.tabs, 'fboss') : TXT.bossLocked(st.left)));
         const tab = nextBtn(st);
         if (tab) card.appendChild(nextButton(tab));
         box.appendChild(card);
@@ -826,14 +902,19 @@
       card.appendChild(el('p', 'rw-boss-rule', TXT.bossRule(list.length, rw.bossPass(list.length))));
       card.appendChild(el('p', 'rw-boss-rule', TXT.bossHeartsRule(rw.bossHearts(list.length))));
       const b = scoreOf();
-      if (b && b.won === true) card.appendChild(el('p', 'rw-boss-won', TXT.bossBeaten));
+      if (b && b.won === true) {   // the trophy icon in place of the emoji when engine/icons.js is there
+        const won = el('p', 'rw-boss-won', TXT.bossBeaten), ic = typeof eng._icon === 'function' ? eng._icon('trophy') : '';
+        if (ic) { won.textContent = TXT.bossTrophy; won.insertAdjacentHTML('afterbegin', ic); }   // static sprite markup
+        card.appendChild(won);
+      }
       if (b && Number.isInteger(b.best) && Number.isInteger(b.total)) card.appendChild(el('p', 'score', TXT.bossBest(b.best, b.total)));
       const go = el('button', 'btn', TXT.bossGo);
       go.type = 'button';
+      if (typeof eng._icon === 'function') go.insertAdjacentHTML('afterbegin', eng._icon('play'));   // static sprite markup
       // the fight is drawn when it starts, so what was answered since this intro appeared counts as seen (same length as list)
       go.onclick = () => {
         const fight = rw.bossRound(pool.quiz, pool.tf, undefined, seen);
-        run = { list: fight, i: 0, score: 0, wrong: 0, pass: rw.bossPass(fight.length), miss: [] };
+        run = { list: fight, i: 0, score: 0, wrong: 0, pass: rw.bossPass(fight.length), miss: [], res: [] };
         show();
       };
       card.appendChild(go);
@@ -843,59 +924,50 @@
     // Practice on the misses of the round before (audit L4): the same questions and feedback, but no health bar, no boss
     // record, no Rewards.onBoss and no celebration; `run` is set while it lasts, so guide() leaves it alone (bossView.busy).
     function practice(miss) {
-      run = { list: eng._retryList(miss), i: 0, score: 0, wrong: 0, pass: 0, miss: [], practice: true };
+      run = { list: eng._retryList(miss), i: 0, score: 0, wrong: 0, pass: 0, miss: [], practice: true, res: [] };
       show();
     }
-    // the end card's buttons: «Νέα μάχη» (to the intro), with «Ξανά μόνο τα λάθη» before it while there are misses
-    function endButtons(card, miss) {
-      const again = el('button', 'btn', TXT.bossAgain);
-      again.type = 'button';
-      again.onclick = intro;
-      if (!miss.length) { card.appendChild(again); return; }
-      const row = el('div', 'rw-boss-btns');
-      row.append(retryButton(miss), again);
-      card.appendChild(row);
+    // The end screen of a fight or a practice (engine.js Engine._endScreen, mockup 06): «Νέα μάχη» (to the intro), «Ξανά μόνο
+    // τα λάθη» (a practice round) while there are misses, the review (the misses, page item text rendered as the questions
+    // are, and the ones answered right) behind «Δες τις απαντήσεις σου». o: the screen's own parts (stars, head, lines, ...).
+    function endScreen(o, miss) {
+      const rights = run.list.filter((x, k) => run.res[k] === true);
+      fit(true);
+      box.innerHTML = eng._endScreen(Object.assign({ tab: 'fboss', again: { label: TXT.bossAgain }, retry: miss.length ? { n: miss.length } : null,
+        misses: miss, rights }, o));   // engine strings, numbers and the page's item text, as the questions render them
+      const again = box.querySelector('.sh-end-again');
+      if (again) again.onclick = intro;
+      box.querySelectorAll('.rv-retry').forEach(b => { b.onclick = () => practice(miss); });
+      eng._endOn(box);
     }
-    function retryButton(miss) {
-      const b = el('button', 'btn rv-retry', TXT.bossRetry);
-      b.type = 'button';
-      b.onclick = () => practice(miss);
-      return b;
-    }
-    // the review list under the end card (page item text, rendered as the questions are), and the retry again under a long list
-    function review(miss) {
-      if (!miss.length) return;
-      const rv = el('div', 'rw-boss-review');
-      rv.innerHTML = eng._reviewHtml(miss);
-      box.appendChild(rv);
-      if (miss.length < 4) return;
-      const row = el('div', 'rw-boss-btns rv-end');
-      row.appendChild(retryButton(miss));
-      box.appendChild(row);
-    }
+    const escT = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     function show() {
       if (run.i >= run.list.length) { end(); return; }
       const n = run.list.length;
       const { kind, item } = run.list[run.i];
       if (seen) seen.add(item);   // a fight or practice question on screen counts as seen for the next fight
+      fit(true);
       box.replaceChildren();
-      const top = el('div', 'row');
-      top.style.justifyContent = 'space-between';
+      // the activity frame: the progress line (one segment per question, engine.js _segs), then the body (the boss and its
+      // health, the question, the options), then the feedback panel
+      const top = el('div', 'sh-prog');
+      const segs = () => (typeof eng._segs === 'function' ? eng._segs('bossSegs', run.res, n, run.i) : '');
+      top.innerHTML = segs();   // static markup from numbers only
       top.appendChild(el('span', 'score', TXT.bossQ(run.i + 1, n)));
       const sc = el('span', 'score', TXT.bossScore(run.score));
       top.appendChild(sc);
       box.appendChild(top);
-      const prog = el('div', 'prog'), pf = el('div');
-      pf.style.width = (run.i / n * 100) + '%';
-      prog.appendChild(pf);
-      box.appendChild(prog);
+      const main = el('div', 'sh-body');
+      box.appendChild(main);
       const practiceRun = !!run.practice;
       let f = null, bar = null, fill = null, back = null, hearts = null, say = null;
       if (practiceRun) {   // a label in place of the boss and its health bar
         const tag = el('div', 'rw-boss-practice');
-        tag.append(el('b', '', TXT.bossPractice), el('span', '', TXT.bossPracticeNote));
-        box.appendChild(tag);
+        const b = el('b', '', TXT.bossPractice);
+        if (typeof eng._icon === 'function') b.insertAdjacentHTML('afterbegin', eng._icon('retry'));   // static sprite markup
+        tag.append(b, el('span', '', TXT.bossPracticeNote));
+        main.appendChild(tag);
       } else {
         const hpRow = el('div', 'rw-boss-hprow');
         f = face('small', 'idle');
@@ -913,17 +985,20 @@
         hearts.setAttribute('role', 'img');
         drawHearts(hearts, n, rw.bossOver({ len: n, answered: run.i, wrong: run.wrong }).hearts, false);
         hpRow.appendChild(hearts);
-        box.appendChild(hpRow);
+        main.appendChild(hpRow);
         // the polite announcement of a lost heart (the hearts' own label changes too, but a label change is not announced)
         say = el('p', 'rw-sr');
         say.setAttribute('role', 'status');
-        box.appendChild(say);
+        main.appendChild(say);
       }
       const q = el('div', 'big');
       q.style.margin = '12px 0';
       q.innerHTML = item[0];
-      box.appendChild(q);
-      const ex = el('div');
+      main.appendChild(q);
+      const optBox = el('div', 'sh-opts');
+      optBox.setAttribute('data-primary', '');
+      main.appendChild(optBox);
+      const ex = el('div', 'sh-fb');   // read through the engine's #shLive (engine.js Engine.shell._a11y), no role of its own
       // each option is [button, right]; quiz options are shuffled with the engine's global shuffle, as in Engine.quiz
       const opts = kind === 'quiz'
         ? shuffle(item[1]).map((o, k) => {
@@ -931,7 +1006,12 @@
           b.innerHTML = String.fromCharCode(945 + k) + ') ' + o;
           return [b, o === item[1][0]];
         })
-        : [[TXT.bossTrue, true], [TXT.bossFalse, false]].map(([label, v]) => [el('button', 'opt', label), v === item[1]]);
+        : [[TXT.bossTrue, true, 'tick'], [TXT.bossFalse, false, 'cross']].map(([label, v, icon]) => {
+          const b = el('button', 'opt', label);
+          // with the shell, the tick and cross icons in place of the ✔ and ✘ of the label (static sprite markup)
+          if (typeof eng._icon === 'function' && eng._icon(icon)) b.innerHTML = eng._icon(icon) + label.replace(/^[✔✘]\s*/, '');
+          return [b, v === item[1]];
+        });
       let answered = false;
       opts.forEach(([b, ok]) => {
         b.type = 'button';
@@ -944,8 +1024,12 @@
           const st = rw.bossOver({ len: run.list.length, answered: run.i + 1, wrong: run.wrong, practice: practiceRun });
           sc.textContent = TXT.bossScore(run.score);
           eng._cheer(ok);
-          opts.forEach(([x, r]) => { x.disabled = true; if (r) x.classList.add('right'); });
-          if (!ok) b.classList.add('wrong');
+          const mark = v => (typeof eng._okMark === 'function' ? eng._okMark(v) : '');   // static markup: a tick or a cross
+          opts.forEach(([x, r]) => { x.disabled = true; if (r) { x.classList.add('right'); x.insertAdjacentHTML('beforeend', mark(true)); } });
+          if (!ok) { b.classList.add('wrong'); b.insertAdjacentHTML('beforeend', mark(false)); }
+          run.res[run.i] = ok;
+          const sg = box.querySelector('#bossSegs');
+          if (sg) sg.outerHTML = segs();
           if (!practiceRun) {
             const left = Math.max(0, run.pass - run.score);
             fill.style.width = (left / run.pass * 100) + '%';
@@ -963,45 +1047,43 @@
             }
           }
           const expl = el('div', 'expl');
-          const head = el('b', '', ok ? TXT.bossRight : TXT.bossWrong);
-          head.style.color = ok ? 'var(--ok)' : 'var(--bad)';
+          const head = el('b', 'sh-v ' + (ok ? 'ok' : 'bad'), ok ? TXT.bossRight : TXT.bossWrong);
+          if (typeof eng._icon === 'function') head.insertAdjacentHTML('afterbegin', eng._icon(ok ? 'tick' : 'cross'));
           expl.appendChild(head);
           const body = el('span');
           body.innerHTML = (kind === 'tf' ? TXT.bossTfIs(item[1] === true) : '') + (item[2] || '');
           expl.appendChild(body);
-          // a miss that leaves hearts: the boss boasts under the explanation (the last heart gets his `lose` line on the end card)
+          // a miss that leaves hearts: the boss boasts under the explanation (the last heart gets his `lose` line on the end card);
+          // at the last fit level (engine.js Engine._fit) the taunt moves up to the verdict's line, ahead of the explanation
           if (!ok && !practiceRun && st.why !== 'hearts') {
             lastTaunt = rw.bossTaunt(who.taunt, lastTaunt);
             if (lastTaunt) {
               const t = el('p', 'rw-boss-taunt');
               t.append(el('b', '', who.name + ': '), el('span', '', '«' + lastTaunt + '»'));
               expl.appendChild(t);
+              box._fitLast = () => head.after(t);
             }
           }
-          const nav = el('div');
-          nav.style.cssText = 'margin-top:12px;text-align:right';
-          const nb = el('button', 'btn', st.over ? TXT.bossEnd : TXT.bossNext);
+          const nav = el('div', 'sh-fbnav');
+          const nb = el('button', 'btn sh-primary', (st.over ? TXT.bossEnd : TXT.bossNext).replace(/\s*▶$/, ''));
           nb.type = 'button';
           nb.onclick = () => { run.i++; if (st.over) end(st); else show(); };
           nav.appendChild(nb);
           ex.replaceChildren(expl, nav);
+          fit(false);
+          try { nb.focus({ preventScroll: true }); } catch (e) { /* no DOM focus (node tests) */ }   // the options are disabled now: the focus leads on (W8)
         };
-        box.appendChild(b);
+        optBox.appendChild(b);
       });
       box.appendChild(ex);
     }
 
-    // practice end: the score of this practice, what is still missed, the retry while misses remain, and «Νέα μάχη»
+    // practice end: the score of this practice (no stars, the practice label instead), what is still missed, the retry while
+    // misses remain, and «Νέα μάχη»
     function practiceEnd() {
       const total = run.list.length, score = run.score, miss = run.miss;
-      box.replaceChildren();
-      const card = el('div', 'rw-boss-intro');
-      card.appendChild(el('p', 'rw-boss-practice', TXT.bossPractice));
-      card.appendChild(el('div', 'big', score + ' / ' + total));
-      card.appendChild(el('p', 'rw-boss-say', miss.length ? TXT.bossPracticeLeft(score, total) : TXT.bossPracticeAll));
-      endButtons(card, miss);
-      box.appendChild(card);
-      review(miss);
+      endScreen({ stars: null, tag: eng._icon('retry') + escT(TXT.bossPractice) + '<span>' + escT(TXT.bossPracticeNote) + '</span>', head: eng.result(score, total),
+        lines: [['sh-end-say', escT(miss.length ? TXT.bossPracticeLeft(score, total) : TXT.bossPracticeAll)]] }, miss);
       run = null;
     }
 
@@ -1027,17 +1109,15 @@
         if (!wasWon) celebrate({ starsUp: null, sticker: true, badges, questDone: false });
         else { celebrate({ starsUp: null, sticker: false, badges, questDone: false }); confetti(); sound('win'); }
       }
-      box.replaceChildren();
-      const card = el('div', 'rw-boss-intro');
-      card.appendChild(face(won ? 'down' : '', won ? 'beaten' : 'idle'));
-      card.appendChild(el('h3', 'rw-boss-name', won ? TXT.bossWon : TXT.bossLost));
-      if (early) card.appendChild(el('p', 'rw-boss-rule', TXT.bossNoHearts));
-      card.appendChild(el('div', 'big', score + ' / ' + total));
-      card.appendChild(el('p', 'rw-boss-say', won ? who.win : who.lose));
-      card.appendChild(el('p', 'score', TXT.bossBest(rec.best, total)));
-      endButtons(card, miss);
-      box.appendChild(card);
-      review(miss);
+      // the end screen: a win is the 3 stars of the trophy (Rewards.pageStars), a loss none, with what the win needs; the
+      // boss drawing (beaten or idle) beside the verdict; the first win's gold sticker; the trophy and the best score
+      const svg = artKey ? artMarkup(artKey, won ? 'beaten' : 'idle', { size: 64 }) : '';
+      endScreen({ stars: won ? 3 : 0, head: escT((won ? TXT.bossWon : TXT.bossLost).replace(/\s*🏆$/, '')),
+        face: '<span class="sh-end-face" aria-hidden="true">' + (svg || escT(who.emo)) + '</span>',
+        sticker: won && !wasWon ? { name: TXT.bossSticker, gold: true } : null,
+        lines: [['sh-end-score', eng.result(score, total)], ['sh-end-rule', early ? escT(TXT.bossNoHearts) : ''], ['sh-end-say', escT(won ? who.win : who.lose)],
+          ['sh-end-next', won ? '' : escT(TXT.bossWin(run.pass))],
+          ['sh-end-fact', (rec.won ? eng._icon('trophy') + escT(TXT.bossTrophy) + ' ' : '') + escT(TXT.bossBest(rec.best, total))]] }, miss);
       run = null;
       guide();   // a stored _boss record or a win can change what «Συνέχισε» opens
     }
@@ -1068,7 +1148,8 @@
     const pg = document.getElementById('pg'), btn = document.getElementById('pgBtn');
     if (pg && btn && !document.getElementById('rwSnd')) {
       const holder = document.createDocumentFragment();
-      const b = soundToggle(holder);
+      const shell = !!document.getElementById('shTools');   // the shell's top bar: the speaker icon, before the star chip
+      const b = soundToggle(holder, { icon: shell });
       if (b) { b.id = 'rwSnd'; pg.insertBefore(holder, btn); document.body.classList.add('rw-snd-on'); }
     }
     // A kid page builds the day's quest once plan.js and units.js have loaded or failed to load; loadPlan marks it pending first,
@@ -1083,5 +1164,7 @@
     guide();
   }
 
-  window.RewardsUI = { TXT, celebrate, confetti, sound, soundToggle, questStrip, countdown, toast, boss, guide, init, art, artMarkup, loadSync };
+  // bossLock: this page's final boss lock {unlocked, left} (lockState), for the shell's tiles and rail (engine.js Engine.shell)
+  window.RewardsUI = { TXT, celebrate, confetti, sound, soundToggle, questStrip, countdown, toast, boss, guide, init, art, artMarkup, loadSync,
+    bossLock: () => (R() && window.PG ? lockState() : null) };
 })();

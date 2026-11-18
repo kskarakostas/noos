@@ -1,39 +1,539 @@
-/* engine-ui.css: progress table, home link, phone layer (load after page styles) */
+/* engine-ui.css: the chapter shell (round 3, W2), the activity frame, the progress table, and the phone rules of the games
+   (load after page styles). Everything of the shell is scoped to html.sh, which engine.js (Engine.shell.init) sets.
 
-#pg{position:fixed;top:10px;right:10px;z-index:30;font-family:Commissioner,sans-serif}
-#pgBtn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:999px;font:800 15px Commissioner,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.10)}
-#pgPanel{display:none;position:absolute;right:0;top:46px;width:min(330px,92vw);background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.16);padding:14px}
+   ===== THE ACTIVITY FRAME: CSS AND MARKUP CONTRACT (for the fit pass, W5) =====
+   The shell gives every chapter page a 64 px top bar (#shTop) and, below 1100 px, a 68 px bottom bar (#shBar, in the flow,
+   hidden on the chapter home and in quiz, true/false and boss rounds); at 1100 px and wider a 272 px rail (#shRail) on the
+   left. <main> fills the rest of the screen and is the only thing that scrolls; the page never scrolls.
+   An activity is one <section> of <main> (its id is the tab id). Without the contract it is shown as before, scrolling
+   inside main, its first <h2> hidden on screen (the activity's name is in the top bar) but read by screen readers and
+   focused when the activity opens (W8). With the contract it fills main exactly:
+
+   <section id="build" class="sh-frame">               frame: a flex column of main's full height, padding 0 16 px
+     <h2>...</h2>                                       hidden in a frame (any direct h2)
+     <div class="sh-prog">                              progress line row, under the top bar (8 px line, 32 px row)
+       <div class="sh-line"><span style="width:40%"></span></div>   the line; or <div class="sh-segs"> with one <i> per
+                                                        question, class ok (right) or bad (wrong), cur (on screen)
+       <span class="sh-count">2 από 5</span>            the words beside it
+       <div class="seg sh-level">                       optional level choice: a two-part switch, 44 px buttons;
+         <button class="on">Εύκολο</button><button>Δύσκολο</button>   the selected one has class on or aria-pressed="true"
+       </div>
+     </div>
+     <div class="sh-body">...</div>                     content region: flexes, scrolls on its own when too tall
+     <div class="sh-actions">                           action row, anchored at the bottom (12 px above, 16 px below)
+       <button class="sh-help">(icon) Βοήθεια</button>  help, only when the game has it (56 px high)
+       <button class="sh-primary" data-primary>Έλεγχος</button>   the primary button: flex 1, 56 px, the one primary style
+       <button class="sh-skip" aria-label="Επόμενο">(icon)</button>   skip or next, 56 px square
+     </div>
+     <div class="sh-fb"></div>                          feedback panel: empty or [hidden] is not shown; with content it
+                                                        replaces the action row (the row is hidden), white, 2 px top
+                                                        border, verdict word, explanation, next button; at the bottom
+                                                        below 1100 px, inline under the content (a card) from 1100 px.
+                                                        Hidden means empty, [hidden], or display:none in its inline style
+                                                        (the action row stays then). No role="status" of its own:
+                                                        engine.js (Engine.shell._a11y) reads its words once through
+                                                        #shLive and drops a role a page gave it (W8, A4)
+   </section>
+   A wrapper between the section and these parts (as the engine's quiz box) gets class sh-col: a flex column that flexes.
+   - data-primary: on each activity's main control (the button that checks or the group of answer options). The fold
+     probe (tools/fold_probe.mjs) measures the first visible [data-primary] of the open section: it must be fully on the
+     screen, above the bottom bar, without scrolling.
+   - Classes inside .sh-fb: .expl (the explanation, no box of its own there), b.sh-v.ok or b.sh-v.bad (the verdict word,
+     with a tick or cross icon first, never colour alone), .sh-fbnav (the next button, full width below 1100 px).
+   - An answered option: class right or wrong on .opt, and the mark span.sh-mark (engine.js Engine._okMark) inside it.
+   - Mark helpers (W5g): class sh-ok or sh-bad on any answered element (a tile, a chip, a bin, a cell) gives it the green or
+     red outline and fill and draws a tick or a cross in its top right corner (CSS only: ::after, position relative), so a
+     page needs no mark markup of its own. A page that uses ::after on that element for something else uses Engine.okMark.
+   - A panel above a row that stays (W5g): .sh-fb.sh-fbkeep is a feedback panel for a box with no next button of its own
+     (a hint, an input error, a verdict whose next step is in the action row): it shows between the content and the action
+     row, which stays visible (white, joined to the panel below 1100 px). Hidden as any .sh-fb.
+   - Icons: Icons.svg(name) from engine/icons.js (help, skip, tick, cross, play, ...); no emoji as interface icons.
+   - JavaScript, optional (engine.js): Engine.shell.progress(sectionOrId, done, total[, text]) sets or creates the
+     progress line; Engine.shell.feedback(sectionOrId, html) fills the panel (null or '' empties it and brings the action
+     row back). Pages may also write the markup above directly.
+   - Reading views (the chapter home, parent guide) scroll inside main. The summary (W6b) is a frame of concept cards
+     (Engine.shell._sumInit), the cards a frame too (Engine._fcFrame); both move the page's own markup, ids kept.
+   - End of a round (W6b): Engine._endScreen(o) is the round's whole end, put into its box and drawn fixed over the content
+     area; Engine._endOn(box) wires it (close and Escape to the chapter start, «Συνέχισε», the review view).
+   - Breakpoints: below 1100 px the phone layout (content column 640 px at most, centred on a tablet); 1100 px and wider
+     the rail and a 980 px column (quiz, true/false and boss 800 px).
+   - The owl (W5g, G2): a page with #owlSay (the Γ΄ mascot's lines) gets #shOwl, a note of up to two lines in the top bar in the
+     label's place (never over a control, no activity moves) that shows each new line for a few seconds; a tap on a cut
+     line opens it whole (the top bar grows meanwhile). Not shown while an end-of-round screen or its review is open (the
+     line is still read). A tap or Escape closes it.
+   - Fit of an answered round (G2): engine.js Engine._fit gives a quiz, true/false or boss box the classes sh-fit1 to
+     sh-fit7 while its .sh-body or feedback panel overflows (the rules «fit levels» below).
+   - Generic games and Engine.build pages: engine.js _gframe draws the frame for every engine game; a page's own game in
+     Engine.build joins the frame when its html holds a .sh-body (its intro then goes first into that .sh-body).
+     Their styles: the section «fit generic games» of engine-content.css.
+   ===== END OF THE CONTRACT ===== */
+
+/* ---------- page and layout ---------- */
+html.sh{height:100%;overflow:hidden}
+html.sh body{height:100vh;height:100dvh;margin:0;display:flex;flex-direction:column;overflow:hidden;
+  background-color:var(--paper);background-image:var(--paper-grid);background-size:var(--grid-size) var(--grid-size);color:var(--ink);font-family:var(--font)}
+html.sh body>header:not(.sh-top),html.sh body>nav:not(.sh-bar){display:none !important}   /* the page header and tab row, replaced */
+html.sh main{flex:1 1 auto;min-height:0;width:100%;max-width:none;margin:0;padding:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+html.sh main>section{max-width:640px;margin:0 auto;padding:16px var(--pad-screen) 24px}
+html.sh main>section.sh-act>h2:first-child,html.sh main>section.sh-frame>h2{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}   /* hidden on screen, read and focused (W8: Engine.shell._focusView) */
+/* engine.css styles every header and nav (the page's own), rewards.css pads body.rw-snd-on header: not the shell's */
+html.sh body>header.sh-top{max-width:none;margin:0;padding:8px 12px}
+html.sh body nav.sh-bar,html.sh body nav.sh-rnav{position:static;z-index:auto;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+html.sh body nav.sh-rnav{background:none}
+html.sh body nav.sh-bar{background:var(--white)}
+.sh-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- top bar ---------- */
+.sh-top{flex:none;position:relative;z-index:40;height:var(--bar-h);display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--cover)}
+.sh-back{flex:none;width:var(--tap);height:var(--tap);display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:12px;background:rgba(255,255,255,.16);color:var(--white);cursor:pointer}
+.sh-back.sh-off{visibility:hidden}
+.sh-label{min-width:0;background:var(--white);color:var(--ink);border-radius:var(--r-label);border-top:var(--label-rule);border-bottom:var(--label-rule);display:flex;flex-direction:column;justify-content:center}
+.sh-top .sh-label{flex:1;height:48px;padding:2px 12px}
+.sh-ctx{font:var(--fw-semi) var(--fs-context)/1.3 var(--font);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-title{font:var(--fw-bold) var(--fs-title)/1.15 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-tools{flex:none;display:flex;align-items:center;gap:8px}
+html.sh #pg{position:relative;top:auto;right:auto;bottom:auto;z-index:auto;display:flex;align-items:center;gap:8px}
+/* the star chip is the page's #pgBtn: it opens the 📊 table (#pgPanel) as before */
+html.sh #pgBtn.sh-chip{height:var(--tap);min-width:var(--tap);padding:0 12px;display:inline-flex;align-items:center;gap:4px;border:0;border-radius:22px;
+  background:var(--star);color:var(--ink);font:var(--fw-bold) 16px var(--font);box-shadow:none;cursor:pointer}
+html.sh #pgBtn.sh-chip .icon{width:18px;height:18px}
+html.sh #pgBtn.rw-lit{box-shadow:0 0 0 3px var(--white)}
+html.sh #pgPanel{position:absolute;right:0;top:52px;width:min(340px,calc(100vw - 24px));max-height:calc(100dvh - 80px);overflow:auto;z-index:50;
+  background:var(--white);color:var(--ink);border:var(--outline);border-radius:var(--r-card);box-shadow:none;padding:14px}
+html.sh .pgfoot button{min-height:var(--tap);border:var(--outline);border-radius:12px}
+/* the sound toggle (rewards-ui.js soundToggle draws the sound-on and sound-off icons; rewards.css shows the one of the state) */
+html.sh .sh-top .rw-snd{width:var(--tap);height:var(--tap);min-width:var(--tap);min-height:var(--tap);padding:0;display:inline-flex;align-items:center;justify-content:center;
+  border:0;border-radius:12px;background:rgba(255,255,255,.16);color:var(--white);box-shadow:none}
+html.sh .sh-top .rw-snd[aria-pressed="true"]{background:rgba(255,255,255,.3);border:0}
+@media(max-width:359.98px){html.sh body>header.sh-top{gap:6px;padding:8px}}
+
+/* ---------- chapter start view (round 3, W3, mockup 03): the card, the mission, the stages with their tiles ---------- */
+.sh-hcard{background:var(--white);border:var(--outline);border-radius:var(--r-card);padding:14px;display:flex;flex-direction:column;gap:10px}
+.sh-hstars{display:flex;align-items:center;gap:10px}
+.sh-hstars:empty{display:none}
+.sh-hsn{flex:none;display:inline-flex;align-items:center;gap:4px}
+.sh-hsn b{font:var(--fw-bold) 20px var(--font)}
+.sh-hsn span{color:var(--mute);font-weight:var(--fw-semi)}
+.sh-hsn .icon,.sh-st .icon,.sh-rstars .icon{color:var(--star);stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+.sh-track{display:block;flex:1;min-width:24px;height:var(--progress-h);border-radius:4px;background:var(--grid);overflow:hidden}
+.sh-track>span{display:block;height:100%;background:var(--ok)}
+.sh-hstars .sh-track>span{background:var(--star)}
+.sh-hcard>div:empty{display:none}
+.sh-say{margin:0;font:var(--fw-regular) 14px/1.35 var(--font);color:var(--mute)}
+.sh-say:empty{display:none}
+/* a stage: badge (done: a tick on green; current: its number on blue; locked: a padlock in a dashed ring), name, right side */
+.sh-grp{margin-top:16px}
+.sh-shead{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.sh-badge{flex:none;box-sizing:border-box;width:28px;height:28px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:var(--cover);color:var(--white);font:var(--fw-bold) 15px var(--font)}
+.sh-badge .icon{width:16px;height:16px}
+.sh-grp.is-done .sh-badge{background:var(--ok)}
+.sh-grp.is-done .sh-badge .icon{stroke-width:3.2}
+.sh-grp.is-locked .sh-badge{background:var(--white);border:2px dashed var(--locked);color:var(--mute)}
+.sh-grp.is-locked .sh-badge .icon{width:14px;height:14px}
+.sh-ghead{flex:none;margin:0;font:var(--fw-bold) var(--fs-heading-sm) var(--font);color:var(--ink);outline-offset:4px}
+.sh-grp.is-locked .sh-ghead{color:var(--mute)}
+.sh-gside{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:6px;text-align:right;
+  font:var(--fw-semi) var(--fs-small-min)/1.25 var(--font);color:var(--mute)}
+.sh-gside .sh-ratio{flex:0 1 120px}
+.sh-gside .sh-track>span{background:var(--cover)}
+.sh-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sh-tile{min-width:0;min-height:var(--tile-h);padding:8px 12px;display:flex;flex-direction:column;justify-content:center;gap:4px;text-align:left;
+  background:var(--white);color:var(--ink);border:var(--outline);border-radius:var(--r-tile);font:inherit;cursor:pointer}
+.sh-tname{font:var(--fw-bold) 15px/1.2 var(--font);overflow-wrap:anywhere}
+.sh-tstate{display:flex;align-items:center;gap:6px;min-height:16px;font:var(--fw-semi) var(--fs-small-min)/1.2 var(--font);color:var(--mute)}
+.sh-tstate .icon{flex:none;width:14px;height:14px}
+.sh-tile.is-locked{flex-direction:row;align-items:center;justify-content:space-between;gap:6px;border-style:dashed;border-color:var(--locked);
+  background:var(--locked-fill);color:var(--mute)}
+.sh-tile.is-locked>.icon{flex:none;width:18px;height:18px}
+.sh-stars{display:inline-flex;gap:2px}
+.sh-st{display:inline-flex}
+.sh-st .icon{width:16px;height:16px;color:transparent}
+.sh-st.on .icon{color:var(--star)}
+.sh-new{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--cover);color:var(--white);font:var(--fw-bold) var(--fs-small-min)/1.4 var(--font)}
+.sh-ratio{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.sh-ratio b{flex:none;color:var(--ink);font-weight:var(--fw-bold);white-space:nowrap}
+.sh-hfoot{display:flex;justify-content:center;margin:16px 0 0}
+.sh-plink{min-height:var(--tap);display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:0;background:none;color:var(--mute);font:var(--fw-semi) 14px var(--font);cursor:pointer}
+.sh-plink .icon{width:16px;height:16px}
+/* the reward layer's parts on the home (rewards-ui.js puts them into the #shSlot... boxes); rewards.css loads after this file */
+html.sh #shHome .rw-next{max-width:none;margin:0;padding:0}
+html.sh .rw-next-btn.sh-primary{width:100%;min-height:var(--btn-h);display:flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;border:0;border-radius:var(--r-button);
+  background:var(--btn-bg);color:var(--btn-fg);font:var(--btn-font);text-align:center;box-shadow:none}
+html.sh .rw-next-btn.sh-primary .icon{flex:none;width:20px;height:20px}
+html.sh #shHome .rw-count{margin:0;width:auto;border-width:2px;font-size:15px}
+html.sh #shHome .rw-plannote{margin:0;max-width:none;font-size:14px}
+html.sh #shHome .rw-quest{max-width:none;margin:12px 0 0;padding:0}
+/* the mission (rewards-ui.js questTrail): one row, the trail (the hub's steps, path and gift) then the next task's line;
+   the chip rules of rewards.css (.rw-task, .rw-more) are undone here */
+html.sh #shHome .rw-quest.rw-qtrail{display:flex;flex-wrap:nowrap;align-items:center;gap:12px}
+html.sh #shHome .rw-trail{flex:0 0 auto;width:min(48%,200px);display:flex;align-items:center}
+html.sh #shHome .rw-qtrail .hub-step{flex:none;box-sizing:border-box;width:32px;min-width:32px;height:32px;min-height:0;max-width:none;padding:0;gap:0;
+  border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--white);border:2px dashed var(--locked);
+  color:var(--mute);font:var(--fw-bold) 15px var(--font)}
+html.sh #shHome .rw-qtrail .hub-step.next{border:3px solid var(--cover);color:var(--cover)}
+html.sh #shHome .rw-qtrail .hub-step.done{background:var(--star);border:2px solid var(--ink);color:var(--ink)}
+html.sh #shHome .rw-qtrail .hub-gift .icon,html.sh #shHome .rw-qtrail .hub-step .icon{display:block}
+.rw-qsay{flex:1;min-width:0;font:var(--fw-semi) var(--fs-small)/1.3 var(--font);color:var(--mute);overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+a.rw-qsay{color:var(--cover)}
+/* what a tap on a locked step says (engine.js Engine.shell.why): a note at the bottom of the screen, above the bottom bar.
+   G2: taps pass through it to the tiles below (any tap closes it, engine.js), so it never swallows the next tap */
+.sh-why{position:fixed;z-index:60;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);box-sizing:border-box;
+  width:max-content;max-width:min(520px,calc(100vw - 32px));padding:12px 16px;border-radius:var(--r-card);background:var(--ink);color:var(--white);
+  font:var(--fw-semi) 15px/1.35 var(--font);pointer-events:none}
+.sh-why:empty{width:0;height:0;padding:0;overflow:hidden}
+html.sh.sh-barvis .sh-why{bottom:calc(var(--bottom-bar-h) + 16px + env(safe-area-inset-bottom))}
+html.sh .rw-toast{box-shadow:none;border:var(--outline)}
+
+/* ---------- bottom bar (below 1100 px) ---------- */
+.sh-bar{flex:none;display:none;height:calc(var(--bottom-bar-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);justify-content:center;
+  background:var(--white);border-top:2px solid var(--ink)}
+html.sh.sh-barvis .sh-bar{display:flex}
+.sh-bar button{flex:1;max-width:240px;min-height:var(--tap);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  border:0;border-top:4px solid transparent;background:transparent;color:var(--mute);font:var(--fw-semi) var(--fs-small-min) var(--font);cursor:pointer}
+.sh-bar button.on{background:var(--cover-soft);color:var(--cover);font-weight:var(--fw-bold);border-top-color:var(--cover)}
+
+/* ---------- rail (1100 px and wider) ---------- */
+.sh-rail{display:none}
+
+/* ---------- the activity frame (the contract above) ---------- */
+html.sh main>section.sh-frame.on{display:flex;flex-direction:column;height:100%;padding-top:0;padding-bottom:0;overflow:hidden}
+.sh-col{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.sh-prog{flex:none;display:flex;align-items:center;gap:10px;min-height:32px;padding:12px 0 4px}
+.sh-line{flex:1;min-width:24px;height:var(--progress-h);border-radius:4px;background:var(--grid);overflow:hidden}
+.sh-line>span{display:block;width:0;height:100%;background:var(--cover)}   /* empty until Engine.shell.progress sets its width */
+.sh-count,.sh-prog .score{flex:none;font:var(--fw-semi) var(--fs-small) var(--font);color:var(--mute)}
+.sh-prog .streak{flex:none;display:inline-flex;align-items:center;gap:2px;font:var(--fw-bold) 15px var(--font)}
+.sh-prog .streak .icon{width:18px;height:18px;color:var(--rule)}
+.sh-segs{flex:1;min-width:0;display:flex;gap:4px}
+.sh-segs i{flex:1;height:var(--progress-h);border-radius:4px;background:var(--grid)}
+.sh-segs i.ok{background:var(--ok)}
+.sh-segs i.bad{background:repeating-linear-gradient(135deg,var(--rule) 0 3px,var(--rule-soft) 3px 5px)}   /* striped: not colour alone */
+.sh-segs i.cur{background:var(--cover-soft);box-shadow:inset 0 0 0 2px var(--cover)}
+.sh-prog .sh-level{flex:none;display:inline-flex;width:auto;border:var(--outline);border-radius:12px;overflow:hidden}
+.sh-prog .sh-level button{flex:none;min-width:var(--tap);min-height:var(--tap);padding:0 12px;border:0;background:var(--white);color:var(--ink);font:var(--fw-bold) 14px var(--font)}
+.sh-prog .sh-level button.on,.sh-prog .sh-level button[aria-pressed="true"]{background:var(--ink);color:var(--white)}
+.sh-body{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;padding:4px 0 12px}
+.sh-actions{flex:none;display:flex;align-items:stretch;gap:8px;padding:12px 0 16px}
+.sh-primary{min-height:var(--btn-h);padding:0 16px;border:0;border-radius:var(--r-button);background:var(--btn-bg);color:var(--btn-fg);font:var(--btn-font);cursor:pointer}
+.sh-actions .sh-primary,.sh-actions [data-primary]{flex:1 1 auto}
+.sh-help{flex:none;min-height:var(--btn-h);display:inline-flex;align-items:center;gap:6px;padding:0 14px;border:var(--outline);border-radius:var(--r-button);background:var(--white);color:var(--ink);font:var(--fw-bold) 15px var(--font);cursor:pointer}
+.sh-skip{flex:none;width:var(--btn-h);height:var(--btn-h);padding:0;display:inline-flex;align-items:center;justify-content:center;border:var(--outline);border-radius:var(--r-button);background:var(--white);color:var(--ink);cursor:pointer}
+.sh-help .icon,.sh-skip .icon{width:22px;height:22px}
+.sh-frame.sh-fbon .sh-actions{display:none}
+.sh-frame:has(.sh-fb:not(:empty):not([hidden]):not([style*="display: none"]):not([style*="display:none"]):not(.sh-fbkeep)) .sh-actions{display:none}   /* a separate rule: a browser without :has keeps the one above */
+.sh-fb:empty,.sh-fb[hidden]{display:none}
+/* a panel above an action row that stays (sh-fbkeep, the contract above) */
+.sh-fb.sh-fbkeep{order:1;padding-bottom:12px}
+:is(.sh-frame,.sh-col):has(>.sh-fbkeep)>.sh-actions{order:2}
+:is(.sh-frame,.sh-col):has(>.sh-fbkeep:not(:empty):not([hidden]):not([style*="display: none"]):not([style*="display:none"]))>.sh-actions{
+  margin:0 calc(-1 * var(--pad-screen));padding:4px var(--pad-screen) calc(16px + env(safe-area-inset-bottom));background:var(--white)}
+.sh-fb{flex:none;max-height:60%;overflow-y:auto;margin:0 calc(-1 * var(--pad-screen));padding:14px var(--pad-screen) calc(16px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:12px;background:var(--white);border-top:2px solid var(--ink)}
+.sh-fb .expl{margin:0;padding:0;border:0;background:none;font:var(--fw-regular) var(--fs-body)/1.4 var(--font)}
+.sh-fbnav{display:flex}
+.sh-fbnav .btn{flex:1;min-height:var(--btn-h);font:var(--btn-font)}
+.sh-v{font-weight:var(--fw-bold)}
+.sh-v.ok{color:var(--ok-text)}
+.sh-v.bad{color:var(--rule-text)}
+.sh-v .icon{width:20px;height:20px;margin-right:4px;vertical-align:-4px;stroke-width:3}
+.sh-mark{flex:none;display:inline-flex}
+.sh-mark .icon{width:24px;height:24px;stroke-width:3}
+.opt.right .sh-mark{color:var(--ok-text)}
+.opt.wrong .sh-mark{color:var(--rule-text)}
+/* mark helpers (the contract above): a tick or a cross drawn in the corner, the colour with it */
+.sh-ok,.sh-bad{position:relative}
+.sh-ok{border-color:var(--ok);background-color:var(--ok-soft);box-shadow:inset 0 0 0 2px var(--ok)}
+.sh-bad{border-color:var(--rule);background-color:var(--rule-soft);box-shadow:inset 0 0 0 2px var(--rule)}
+.sh-ok::after,.sh-bad::after{content:"";position:absolute;top:4px;right:4px;width:18px;height:18px;pointer-events:none;
+  -webkit-mask:var(--sh-mk) center/contain no-repeat;mask:var(--sh-mk) center/contain no-repeat;background:var(--ok-text)}
+.sh-ok{--sh-mk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+.sh-bad{--sh-mk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")}
+.sh-bad::after{background:var(--rule-text)}
+/* the owl's note (Engine.shell._owl): up to two lines in the top bar, in the label's place (the label stays in the
+   accessibility tree, off screen), for a few seconds; a tap on a cut line opens it whole, on a row of its own in the top
+   bar, which grows to hold it. Never over a control and no activity moves (G2); not while an end-of-round screen or its
+   review is open. */
+.sh-owl{flex:1 1 auto;min-width:0;box-sizing:border-box;min-height:var(--tap);max-height:48px;
+  display:none;align-items:center;gap:8px;padding:2px 12px 2px 6px;border:var(--outline);border-radius:var(--r-card);background:var(--white);color:var(--ink);
+  font:var(--fw-semi) 14px/1.2 var(--font);cursor:pointer}
+.sh-owl.on{display:flex}
+html.sh:has(main>section.on .sh-end) .sh-owl{display:none}
+.sh-top:has(>.sh-owl.on)>.sh-label{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+html.sh body>header.sh-top:has(>.sh-owl.open){height:auto;min-height:var(--bar-h);flex-wrap:wrap}
+.sh-top:has(>.sh-owl.open)>.sh-tools{margin-left:auto}
+.sh-owl.open{order:3;flex-basis:100%;max-height:none;padding:4px 14px 4px 6px}   /* the whole line on a row of its own, under the buttons */
+.sh-owlface{flex:none;width:32px;height:32px;border-radius:16px;background:var(--cover);display:flex;align-items:center;justify-content:center}
+.sh-owlface .icon{width:26px;height:20px}
+.sh-owlt{min-width:0;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.sh-owl.open .sh-owlt{display:block;-webkit-line-clamp:none}
+/* quiz, true/false and the final boss (engine.js Engine._round): the box is the frame's column, no card around it */
+html.sh .card.sh-round{background:none;border:0;border-radius:0;padding:0;overflow-x:hidden;overflow-y:auto}
+html.sh main>section.sh-rframe>p.muted{display:none}   /* the round's intro line; its streak counter stays in the progress line */
+.sh-round .big{font-size:26px;line-height:1.25}
+.sh-opts{display:flex;flex-direction:column;gap:10px}
+.sh-round .sh-opts .opt{margin:0;min-height:var(--option-h);font-size:19px}
+.sh-tf{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+html.sh .sh-tf .btn{width:100%;min-width:0;min-height:var(--option-h);display:flex;align-items:center;justify-content:center;gap:8px;font:var(--fw-bold) 20px var(--font)}
+.sh-tf .btn .icon,.sh-round .opt>.icon{width:24px;height:24px;stroke-width:3}
+.sh-round .opt>.icon{margin-right:8px}
+html.sh .sh-round .rw-boss-intro{margin-top:12px;padding:16px;background:var(--white);border:var(--outline);border-radius:var(--r-card)}
+/* fit levels of an answered round (G2, engine.js Engine._fit): each level adds to those before it, until nothing scrolls.
+   html.sh in front: the boss's own rules are in rewards.css, which loads after this file; !important only over the
+   question's inline margin and the laptop quiz's #quizBox size. */
+html.sh .sh-round.sh-fit1>.sh-prog{padding:6px 0 2px}
+html.sh .sh-round.sh-fit1 .sh-body{padding:0 0 4px}
+html.sh .sh-round.sh-fit1 .sh-body>.big{margin:4px 0 8px !important}
+html.sh .sh-round.sh-fit1 .sh-opts,html.sh .sh-round.sh-fit1 .sh-tf{gap:6px}
+html.sh .sh-round.sh-fit1 .sh-tf{margin-top:8px}
+html.sh .sh-round.sh-fit1 .sh-fb{padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom));gap:8px}
+html.sh .sh-round.sh-fit1 .rw-boss-hprow{margin-top:2px}
+html.sh .sh-round.sh-fit1 .rw-boss-taunt{margin-top:6px;padding:4px 10px}
+html.sh .sh-round.sh-fit2 .rw-boss-face.small{font-size:24px}
+html.sh .sh-round.sh-fit2 .rw-heart{width:20px;height:20px;font-size:18px;line-height:20px}
+html.sh .sh-round.sh-fit2 .rw-boss-hp{height:12px}
+html.sh .sh-round.sh-fit3 .sh-opts .opt,html.sh .sh-round.sh-fit3 .sh-tf .btn{min-height:56px;padding-top:6px;padding-bottom:6px}
+html.sh .sh-round.sh-fit4 .sh-body>.big{font-size:24px !important;line-height:1.2}
+html.sh .sh-round.sh-fit5 .sh-body>.big{font-size:22px !important}
+html.sh .sh-round.sh-fit6 .sh-body>.big{font-size:20px !important}
+/* level 7: the boss's taunt on the verdict's line (moved there by rewards-ui.js), the explanation on the next line */
+html.sh .sh-round.sh-fit7 .sh-fb .sh-v+.rw-boss-taunt{display:inline;margin:0 0 0 4px;padding:0;border:0;background:none}
+html.sh .sh-round.sh-fit7 .sh-fb .rw-boss-taunt+span{display:block;margin-top:4px}
+
+/* ---------- the end of a round (round 3, W6b, mockup 06; engine.js Engine._endScreen) ----------
+   The box's content, fixed over the content area: the whole screen below 1100 px (over the top bar and the bottom bar),
+   the area beside the rail from 1100 px (the rail stays). The cover colour, three big stars, the result, its lines, the
+   sticker on a label, the actions at the bottom: the yellow primary, the outlined retry, then text buttons. */
+.sh-end{position:fixed;z-index:55;inset:0;display:flex;flex-direction:column;background:var(--cover);color:var(--white);font-family:var(--font);text-align:center}
+.sh-end-top{flex:none;height:var(--bar-h);box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:8px 12px}
+.sh-end-x{flex:none;width:var(--tap);height:var(--tap);display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:12px;background:rgba(255,255,255,.16);color:var(--white);cursor:pointer}
+.sh-end-x .icon{width:22px;height:22px;stroke-width:2.5}
+.sh-end-ctx{flex:1;min-width:0;font:var(--fw-semi) 14px/1.3 var(--font);color:var(--cover-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-end-sp{flex:none;width:var(--tap)}
+.sh-end-main,.sh-end-rv{flex:1 1 auto;min-height:0;width:100%;max-width:640px;margin:0 auto;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;
+  padding:8px 20px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:12px}
+.sh-end-main[hidden],.sh-end-rv[hidden]{display:none}
+.sh-end-stars{flex:none;display:flex;align-items:flex-end;gap:6px;margin:4px 0 6px}
+.sh-end-st{display:block;transform:translateY(10px)}
+.sh-end-st.mid{transform:translateY(-6px)}
+.sh-end-st .icon{display:block;width:72px;height:72px;color:var(--white);stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+.sh-end-st.mid .icon{width:96px;height:96px}
+.sh-end-st.on .icon{color:var(--star)}
+.sh-end-tag{flex:none;margin:8px 0 0;display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;padding:8px 14px;border-radius:999px;
+  background:rgba(255,255,255,.16);font:var(--fw-bold) 15px/1.3 var(--font)}
+.sh-end-tag .icon{width:18px;height:18px}
+.sh-end-tag span{font-weight:var(--fw-semi);color:var(--cover-text)}
+.sh-end .rv-tag{background:none;margin:0;padding:0;color:inherit}
+.sh-end-hrow{display:flex;align-items:center;justify-content:center;gap:12px}
+.sh-end-face{flex:none;width:64px;height:64px;display:flex;align-items:center;justify-content:center;border-radius:32px;background:var(--white);font-size:40px;line-height:1}
+.sh-end-face svg{width:56px;height:56px}
+.sh-end-h{margin:0;font:var(--fw-bold) 34px/1.1 var(--font);color:var(--white);overflow-wrap:anywhere}
+.sh-end-h:focus,.sh-end-rvh:focus{outline:none}
+.sh-end-l{margin:-4px 0 0;font:var(--fw-semi) 16px/1.35 var(--font);color:var(--cover-text)}
+.sh-end-l .icon{width:18px;height:18px;margin-right:4px;vertical-align:-3px}
+.sh-end-score{font-size:22px;font-weight:var(--fw-bold);color:var(--white)}
+.sh-end-rule{color:var(--white)}
+.sh-end-stk{flex:none;align-self:stretch;box-sizing:border-box;display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--white);color:var(--ink);
+  border-radius:8px;border-top:var(--label-rule);border-bottom:var(--label-rule);text-align:left}
+.sh-end-disc{flex:none;box-sizing:border-box;width:64px;height:64px;border-radius:32px;background:var(--star);border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;transform:rotate(-8deg)}
+.sh-end-disc .icon{width:40px;height:40px}
+.sh-end-disc.gold .icon{width:32px;height:32px;color:var(--ink);stroke-width:2.4}
+.sh-end-stkt{min-width:0;display:flex;flex-direction:column}
+.sh-end-stkt b{font:var(--fw-bold) 17px/1.25 var(--font)}
+.sh-end-stkt span{font:var(--fw-regular) 14px/1.35 var(--font);color:var(--mute)}
+.sh-end-acts{flex:none;align-self:stretch;margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.sh-end-go{min-height:var(--btn-h);display:flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;border:0;border-radius:var(--r-button);
+  background:var(--star);color:var(--ink);font:var(--btn-font);cursor:pointer}
+.sh-end-go .icon{flex:none;width:20px;height:20px}
+.sh-end-retry{min-height:52px;padding:0 16px;border:2px solid var(--white);border-radius:var(--r-button);background:transparent;color:var(--white);font:var(--fw-bold) 17px/1.2 var(--font);cursor:pointer}
+.sh-end-links{display:flex;flex-wrap:wrap;justify-content:center;gap:0 12px}
+.sh-end-links:empty{display:none}
+.sh-end-link{min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;border:0;border-radius:12px;background:transparent;
+  color:var(--cover-text);font:var(--fw-semi) 15px/1.2 var(--font);cursor:pointer}
+.sh-end-link .icon{flex:none;width:18px;height:18px}
+.sh-end button:focus-visible{outline:3px solid var(--star);outline-offset:2px}
+.sh-end-link:hover,.sh-end-retry:hover{background:rgba(255,255,255,.12)}
+/* the review: the misses and the ones answered right, on white cards */
+.sh-end-rv{align-items:stretch;text-align:left}
+.sh-end-rvtop{display:flex}
+.sh-end-rvh{margin:0;font:var(--fw-bold) 22px/1.2 var(--font);color:var(--white)}
+.sh-end-rv .rv{margin:0;padding:0;border:0}
+.sh-end-rv .rv-h{margin:4px 0 8px;font:var(--fw-bold) 16px var(--font);color:var(--white)}
+.sh-end-rv .rv-item,.sh-end-rv .rv-good{min-width:0;padding:10px 12px;border:0;border-left:4px solid var(--rule);border-radius:12px;background:var(--white);color:var(--ink);overflow-wrap:anywhere}
+.sh-end-rv .rv-good{border-left-color:var(--ok)}
+.sh-end-rv .rv-ok .icon{width:16px;height:16px;vertical-align:-3px;color:var(--ok-text);stroke-width:3}
+.sh-end-rv .rv-ex{color:var(--mute)}
+.sh-end-rvacts{display:flex;flex-direction:column}
+@media(max-height:760px){
+  .sh-end-main{gap:10px}
+  .sh-end-st .icon{width:56px;height:56px}
+  .sh-end-st.mid .icon{width:76px;height:76px}
+  .sh-end-h{font-size:30px}
+  .sh-end-disc{width:52px;height:52px}
+  .sh-end-disc .icon{width:32px;height:32px}
+}
+@media(min-width:1100px){html.sh .sh-end{left:var(--rail-w)}}
+
+/* ---------- the cards (round 3, W6b; engine.js Engine._fcFrame puts the page's #fc markup on the activity frame) ----------
+   Progress row: previous, the deck's line, «12 από 34», known and not yet, next. Tools row: the category filter (a strip
+   that scrolls on its own when it is wider), shuffle, retry. The card fills the body; its faces scroll on their own when
+   a long answer needs it. Action row: «Όχι ακόμα» and «Το ήξερα», 56 px. */
+.fc-frame .fc-nav{flex:none;width:var(--tap);height:var(--tap);padding:0;display:inline-flex;align-items:center;justify-content:center;border:var(--outline);border-radius:12px;
+  background:var(--white);color:var(--ink);cursor:pointer}
+.fc-frame .fc-nav .icon{width:20px;height:20px}
+.fc-frame .fc-known{flex:none;display:inline-flex;align-items:center;gap:8px;font:var(--fw-bold) var(--fs-small) var(--font);color:var(--mute)}
+.fc-known>span{display:inline-flex;align-items:center;gap:2px}
+.fc-known .icon{width:16px;height:16px;stroke-width:3}
+.fc-known .fc-k .icon{color:var(--ok-text)}
+.fc-known .fc-w .icon{color:var(--rule-text)}
+.fc-tools{flex:none;display:flex;align-items:center;gap:8px;padding:4px 0 8px}
+html.sh .fc-tools .seg{flex:1 1 auto;min-width:0;width:auto !important;display:flex !important;flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none;
+  scroll-padding-inline:32px}
+/* a strip wider than its room fades out at each edge that has more filters behind it (G2; engine.js _fcFrame sets the
+   classes from the scroll position), and a focused filter scrolls clear of the fade (scroll-padding) */
+html.sh .fc-tools .seg.fc-cutr{-webkit-mask-image:linear-gradient(to right,black calc(100% - 32px),transparent);mask-image:linear-gradient(to right,black calc(100% - 32px),transparent)}
+html.sh .fc-tools .seg.fc-cutl{-webkit-mask-image:linear-gradient(to right,transparent,black 32px);mask-image:linear-gradient(to right,transparent,black 32px)}
+html.sh .fc-tools .seg.fc-cutl.fc-cutr{-webkit-mask-image:linear-gradient(to right,transparent,black 32px,black calc(100% - 32px),transparent);
+  mask-image:linear-gradient(to right,transparent,black 32px,black calc(100% - 32px),transparent)}
+html.sh .fc-tools .seg button{flex:0 0 auto !important;min-height:var(--tap);padding:0 12px !important;white-space:nowrap;font:var(--fw-bold) 14px var(--font) !important}
+.fc-tool{flex:none;min-width:var(--tap);height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-left:auto;padding:0 10px;
+  border:var(--outline);border-radius:12px;background:var(--white);color:var(--ink);font:var(--fw-bold) 14px var(--font);cursor:pointer}
+.fc-tool+.fc-tool{margin-left:0}
+.fc-tool .icon{flex:none;width:20px;height:20px}
+.fc-tl{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}   /* words for a screen reader; shown from 600 px */
+.fc-frame .fc-body{display:flex;flex-direction:column;gap:8px}
+.fc-frame .fc-wrap{flex:1 1 auto;min-height:150px;width:100%;max-width:640px;margin:0 auto;display:flex}
+.fc-frame .fc{flex:1 1 auto;height:auto}
+.fc-frame .face{justify-content:safe center;overflow-y:auto;padding:44px 20px 36px;border:var(--outline);border-radius:var(--r-card);background:var(--white)}
+.fc-frame .face .big{font-size:24px}
+.fc-frame .fc-body>.note{flex:none;margin:0;text-align:center}
+.fc-frame .fc:focus-visible{outline:3px solid var(--cover);outline-offset:3px;border-radius:var(--r-card)}
+.fc-acts .fc-rate{flex:1 1 0;min-width:0;min-height:var(--btn-h);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 10px;
+  border-radius:var(--r-button);font:var(--btn-font);cursor:pointer}
+.fc-acts .fc-rate .icon{flex:none;width:22px;height:22px;stroke-width:3}
+.fc-acts #fcNo{background:var(--white);color:var(--ink);border:var(--outline)}
+.fc-acts #fcNo .icon{color:var(--rule-text)}
+.fc-acts #fcYes{background:var(--ink);color:var(--white);border:2px solid var(--ink)}
+.fc-acts .fc-rate:disabled{opacity:.45;cursor:default}
+@media(min-width:600px){.fc-tl{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto}}
+
+/* ---------- the summary as concept cards (round 3, W6b; engine.js Engine.shell._sumInit) ----------
+   Progress row: one dot per card (seen filled, the current one outlined), «3 από 7», «Όλη η σύνοψη». Body: the card on
+   screen, a white card that fills the area and scrolls on its own when longer. Action row: previous and next (on the last
+   card, «Συνέχισε» to the next activity). «Όλη η σύνοψη» (sum-full) shows the whole summary as before, scrolling in the body. */
+.sum-dots{flex:1;min-width:24px;display:flex;gap:4px}
+.sum-dots i{flex:1;max-width:48px;height:var(--progress-h);border-radius:4px;background:var(--grid)}
+.sum-dots i.seen{background:var(--cover)}
+.sum-dots i.cur{background:var(--cover-soft);box-shadow:inset 0 0 0 2px var(--cover)}
+.sum-all{flex:none;min-height:var(--tap);display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:0 12px;border:var(--outline);border-radius:12px;
+  background:var(--white);color:var(--ink);font:var(--fw-bold) 14px var(--font);cursor:pointer}
+.sum-all .icon{flex:none;width:18px;height:18px}
+.sum-pager .sh-skip:disabled{opacity:.4;cursor:default}
+.sum-pager .sh-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.sum-pager .sh-primary .icon{flex:none;width:20px;height:20px}
+#sum.sum-cards .sum-body{margin-top:4px;padding:16px;background:var(--white);border:var(--outline);border-radius:var(--r-card)}
+#sum.sum-cards .sum-body>:not(.sc-on),#sum.sum-cards .sc-box>:not(.sc-on){display:none}
+#sum.sum-cards .sum-body>.sc-box{display:block}
+#sum.sum-cards .sum-body .card{border:0;border-radius:0;padding:0 !important;background:none}   /* !important: the phone rule .card{padding:14px !important} */
+#sum.sum-cards .sum-body h3{margin:0 0 8px}
+#sum.sum-cards .sum-body>.sc-on+.sc-on{margin-top:12px}
+#sum.sum-cards .sum-body>.callout{margin:0}
+#sum.sum-full .sum-dots,#sum.sum-full .sum-top .sh-count{visibility:hidden}
+#sum.sum-full .sum-pager{display:none}
+
+/* ---------- 1100 px and wider: the rail, a white top bar, wider columns ---------- */
+@media(min-width:1100px){
+  html.sh body{padding-left:var(--rail-w)}
+  html.sh .sh-bar,html.sh.sh-barvis .sh-bar{display:none}   /* the rail replaces the bottom bar */
+  html.sh main>section{max-width:980px;padding:24px 32px 32px}
+  .sh-top{background:var(--white);border-bottom:2px solid var(--ink);gap:16px}
+  html.sh body>header.sh-top{padding:0 24px}
+  .sh-top .sh-back{background:var(--white);color:var(--ink);border:var(--outline)}
+  .sh-top .sh-label{height:auto;padding:0;background:none;border:0;border-radius:0}
+  .sh-top .sh-ctx{font-size:var(--fs-small-min)}
+  .sh-top .sh-title{font-size:20px}
+  html.sh .sh-top .rw-snd,html.sh .sh-top .rw-snd[aria-pressed="true"]{background:var(--white);color:var(--ink);border:var(--outline)}
+  html.sh .sh-top .rw-snd[aria-pressed="true"]{background:var(--cover-soft)}
+  .sh-tiles{grid-template-columns:repeat(3,1fr)}
+  .sh-rail{position:fixed;z-index:45;left:0;top:0;bottom:0;width:var(--rail-w);padding:16px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;background:var(--cover);color:var(--white)}
+  .sh-rback{flex:none;min-height:var(--tap);display:flex;align-items:center;gap:8px;color:var(--white);text-decoration:none;font:var(--fw-semi) 14px var(--font)}
+  .sh-rback[hidden]{display:none}
+  .sh-rlabel{flex:none;padding:12px 14px;gap:4px;text-align:left;font:inherit;cursor:pointer;border-left:0;border-right:0}
+  .sh-rlabel .sh-ctx{font-size:var(--fs-small-min);white-space:normal}
+  .sh-rtitle{font:var(--fw-bold) 20px/1.15 var(--font);overflow-wrap:anywhere}
+  .sh-rprog{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+  .sh-rprog:empty{display:none}
+  .sh-rprog .sh-track{flex:none;width:100%}
+  .sh-rstars{display:flex;align-items:center;gap:4px;font:var(--fw-bold) var(--fs-small) var(--font)}
+  .sh-rstars .icon{width:14px;height:14px}
+  .sh-rnav{flex:1 0 auto;display:flex;flex-direction:column;gap:14px}
+  .sh-rgrp{display:flex;flex-direction:column;gap:4px}
+  .sh-rghead{padding:0 12px;font:var(--fw-bold) var(--fs-small) var(--font);color:var(--cover-text)}
+  .sh-rrow{min-height:var(--tap);padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;border:0;border-radius:10px;
+    background:transparent;color:var(--white);font:var(--fw-semi) var(--fs-body) var(--font);text-align:left;cursor:pointer}
+  .sh-rrow:hover{background:rgba(255,255,255,.12)}
+  .sh-rrow.on{background:var(--white);color:var(--ink);font-weight:var(--fw-bold)}
+  .sh-rrow.is-locked:not(.on){color:var(--cover-text)}
+  .sh-rname{min-width:0;overflow-wrap:anywhere}
+  .sh-rstate{flex:none;display:flex;align-items:center;gap:4px;max-width:55%;font:var(--fw-semi) var(--fs-small) var(--font);color:var(--cover-text)}
+  .sh-rrow.on .sh-rstate{color:var(--mute)}
+  .sh-rstate .icon{flex:none;width:14px;height:14px}
+  .sh-rstate .sh-ratio b{color:inherit}
+  .sh-rstate .sh-track{flex:none;width:56px;background:rgba(255,255,255,.3)}
+  .sh-rstate .sh-track>span{background:var(--star)}
+  .sh-rrow.on .sh-rstate .sh-track{background:var(--grid)}
+  .sh-rstate .sh-st .icon{stroke:currentColor}
+  .sh-rstate .sh-new{background:var(--white);color:var(--cover)}
+  .sh-rfoot .sh-plink{width:100%;justify-content:flex-start;border-radius:10px;background:rgba(255,255,255,.16);color:var(--white)}
+  /* rounds: a 2 x 2 grid of options, the feedback inline under them as a card */
+  html.sh main>section.sh-rframe{max-width:800px}
+  .sh-round .sh-body{flex:0 1 auto;padding-top:24px}
+  .sh-rframe .sh-opts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .sh-rframe .sh-opts .opt{min-height:88px;padding:12px 24px;font-size:22px}
+  #quizBox .big{font-size:var(--fs-question-xl)}
+  .sh-tf{flex-direction:row}
+  html.sh .sh-tf .btn{flex:1}
+  .sh-fb{max-height:none;margin:16px 0 0;padding:16px 20px;flex-direction:row;align-items:center;gap:16px;border:var(--outline);border-radius:var(--r-card)}
+  .sh-fb .expl{flex:1}
+  .sh-fbnav .btn{flex:none;padding:0 28px}
+  .sh-fb.sh-fbkeep{margin-top:12px;padding-bottom:16px}
+  :is(.sh-frame,.sh-col):has(>.sh-fbkeep:not(:empty):not([hidden]):not([style*="display: none"]):not([style*="display:none"]))>.sh-actions{margin:0;padding:12px 0 16px;background:none}
+  html.sh body>header.sh-top:has(>.sh-owl.open){padding:8px 24px}
+}
+/* a touch screen at the rail's width: the rows stay 44 px (they are); nothing smaller is added */
+
+/* ---------- focus and motion (W8) ----------
+   A visible ring on every control of the shell: 3 px, 2 px off the control, in --ring: the cover colour on paper and white,
+   white where the control sits on the cover colour (the top bar below 1100 px, the rail), yellow on the end screen.
+   Headings and questions focused by script (tabindex -1) keep the browser's own behaviour. */
+html.sh :is(button,a[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"]),[role="button"]):focus-visible{outline:3px solid var(--ring,var(--cover));outline-offset:2px}
+html.sh .sh-rail,html.sh .sh-top{--ring:var(--white)}
+html.sh .sh-end{--ring:var(--star)}
+html.sh #pgPanel{--ring:var(--cover)}   /* the 📊 table is white, inside the top bar */
+@media(min-width:1100px){html.sh .sh-top{--ring:var(--cover)}}
+/* reduced motion: the shell's transitions and the card flip jump straight to their end */
+@media(prefers-reduced-motion:reduce){
+  html.sh .fc,html.sh .pgbar>div,html.sh .prog>div,html.sh .sh-track>span,html.sh .sh-line>span,html.sh .mcard{transition:none}
+  html.sh main{scroll-behavior:auto}
+}
+
+/* ---------- the progress table (📊), its rows ---------- */
+#pgPanel{display:none}
 #pg.open #pgPanel{display:block}
 #pgPanel h4{margin:0 0 4px;font-size:16px}
 .pgall{font-size:13px;color:var(--muted);margin-bottom:8px}
 .pgrow{display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:14px;margin:9px 0}
 .pgrow b{font-variant-numeric:tabular-nums}
-.pgbar{grid-column:1/3;height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+.pgbar{grid-column:1/3;height:7px;background:var(--grid);border-radius:4px;overflow:hidden}
 .pgbar>div{height:100%;border-radius:4px;transition:width .4s}
 .pgfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px}
 .pgfoot button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 10px;font:700 13px Commissioner,sans-serif;cursor:pointer;color:var(--ink)}
-header{padding-right:130px}
 
-@media(max-width:600px){header{padding-right:14px;padding-top:58px}}
-
-.homebtn{display:none;align-items:center;gap:6px;font:800 13px Commissioner,sans-serif;padding:6px 12px;border-radius:999px;background:#1d2433;color:#fff !important;text-decoration:none;margin-bottom:8px;min-height:44px}
-
-/* ===== Phone and tablet layer for kids (applies up to 1100px) ===== */
+/* ---------- games on phones and tablets (below the rail), until each page's fit pass (W5) ---------- */
 button,a,input,select,.tile,.mcard,.bin,.tool,.chip,.opt{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-#mbar,#msheet{display:none}
-@media(max-width:1100px){
-  body{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
-  /* compact header: the game should be visible without scrolling */
-  header{padding:12px 14px 4px !important}
-  header .sub,header .crumbs span:not(.s):not(.lvl2):not(.lvl3),#homeLink{display:none !important}
-  header .crumbs{margin-bottom:4px}
-  header h1{font-size:22px !important;line-height:1.2;margin:0}
-  .mascot{padding:6px 10px !important;margin-top:6px !important;gap:8px !important;border-width:2px !important}
-  .mascot .owl{font-size:26px !important}
-  .mascot .say{font-size:14px;line-height:1.3}
-  /* the old horizontal tabs are replaced by the bottom game menu */
-  nav{display:none !important}
-  main{padding:10px 12px 20px !important}
+@media(max-width:1099.98px){
   h2{font-size:21px;margin:6px 0 8px}
   section>p.muted{font-size:15px;line-height:1.4;margin:0 0 10px}
   .card{padding:14px !important}
@@ -41,66 +541,28 @@ button,a,input,select,.tile,.mcard,.bin,.tool,.chip,.opt{touch-action:manipulati
   .btn{min-height:48px;font-size:17px !important}
   .seg{display:flex !important;flex-wrap:wrap;width:100%}
   .seg button{flex:1 1 auto;min-height:46px;font-size:15px !important;padding:8px 10px !important}
+  .sh-prog .seg.sh-level{display:inline-flex !important;width:auto}
   .row{gap:8px}
   input[type=text],input[type=number],select{font-size:20px !important;min-height:48px}
   .colop input.res{min-height:0}
   .colop input.carry,.cross input{min-height:0}
   .opt{min-height:52px;font-size:17px !important}
+  .sh-round .sh-opts .opt{min-height:var(--option-h);font-size:19px !important}
   .tool,.bin{min-height:64px}
-  /* flashcard controls: one tidy row */
-  .row:has(#fcNo){display:grid !important;grid-template-columns:52px 1fr 1fr 52px;gap:6px}
-  .row:has(#fcNo) .btn{padding:10px 4px !important;font-size:15px !important}
-  .fc{height:min(300px,58vh)}
   /* tables and grids */
   .dist{font-size:12px} .dist td,.dist th{padding:5px 2px !important}
   #ws{gap:2px !important} #ws div{font-size:15px !important;border-radius:4px !important}
   .tf .btn{min-width:0 !important;flex:1}
   .verdict .btn{flex:1}
-  /* progress badge sits in the bottom bar */
-  #pg{top:auto !important;bottom:calc(14px + env(safe-area-inset-bottom)) !important;right:10px !important;z-index:61 !important}
-  #pgBtn{height:52px;padding:0 12px !important;border-radius:16px !important;box-shadow:none !important}
-  #pgPanel{top:auto !important;bottom:62px !important;max-height:70vh;overflow:auto}
-  /* bottom bar */
-  #mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-top:1px solid #e3dfd3;box-shadow:0 -6px 20px rgba(0,0,0,.08);padding:8px 96px calc(8px + env(safe-area-inset-bottom)) 10px;gap:8px;align-items:center}
-  #mbar a.home{flex:0 0 52px;height:52px;border-radius:16px;background:#1d2433;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;text-decoration:none}
-  #mbar button.games{flex:1;height:52px;border-radius:16px;border:0;background:var(--subj-strong,var(--subj,#1d2433));color:#fff;font:800 16px Commissioner,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px;overflow:hidden;white-space:nowrap}
-  #mbar button.games .cur{overflow:hidden;text-overflow:ellipsis}
-  #mbar button.games.pulse{animation:mpulse 1.6s ease-in-out infinite}
-  @keyframes mpulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.55)}50%{box-shadow:0 0 0 9px rgba(79,70,229,0)}}
-  /* game menu sheet */
-  #msheet.open{display:flex}
-  #msheet{position:fixed;inset:0;z-index:80;background:rgba(20,24,35,.55);align-items:flex-end}
-  #msheet .panel{background:#f6f4ee;width:100%;max-height:88vh;overflow:auto;border-radius:24px 24px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));animation:mup .22s ease-out}
-  @keyframes mup{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
-  #msheet .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  #msheet .top b{font-size:20px}
-  #msheet .top button{width:48px;height:48px;border-radius:14px;border:1px solid #e3dfd3;background:#fff;font-size:22px}
-  #msheet .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  /* tab groups (engine.js _mobile): each group spans the sheet and lays out its tabs on the sheet's columns */
-  #msheet .mgrp{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  #msheet .mgrp+.mgrp{margin-top:6px}
-  #msheet .mlbl{grid-column:1/-1;font:800 14px Commissioner,sans-serif;color:#5d6577;margin:2px 4px -4px}
-  #msheet .grid button{min-height:92px;border-radius:18px;border:2px solid #e3dfd3;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:800 15px Commissioner,sans-serif;color:#1d2433;padding:8px;text-align:center;line-height:1.2}
-  #msheet .grid button .e{font-size:32px;line-height:1}
-  #msheet .grid button.on{border-color:var(--subj,#1d2433);background:var(--subj-soft,#eef0f6)}
-  #msheet .grid button.parent{grid-column:1/-1;min-height:56px;flex-direction:row;font-size:14px;color:#5d6577}
-  #msheet .grid button.parent .e{font-size:22px}
-  /* hub */
+  /* hub (unused: the hub does not load this file) */
   .hero{padding:20px 14px 6px !important} .hero .logo{font-size:44px !important}
   .kid{padding:14px !important;border-radius:20px !important}
   .kid-head .total b{font-size:22px !important}
   .grid a.tile{min-height:0 !important}
   .colop .c{width:44px !important} .colop input.res{width:42px !important;height:50px !important;font-size:28px !important}
   .area input{min-height:46px}
-  main{overflow-x:clip}
   .card:has(> table){overflow-x:auto} .card table{font-size:14px} .card td,.card th{padding:6px 5px}
   .pvbtns{gap:6px !important} .pvbtns .col{padding:6px 4px !important;font-size:13px} .pvbtns button{width:44px !important}
+  html.sh .card.sh-round{padding:0 !important}
+  .sh-primary,.sh-fbnav .btn,html.sh .rw-next-btn.sh-primary{font-size:var(--fs-button) !important}   /* over .btn above: the one primary style */
 }
-
-/* ===== Tablets and computers: no hidden tabs, wrap into rows ===== */
-@media(min-width:1101px){
-  .tabs{max-width:1280px !important;flex-wrap:wrap !important;justify-content:center;overflow:visible !important;row-gap:6px;padding:10px 14px !important}
-  .tabs button{flex:0 0 auto}
-}
-
-@media(min-width:600px) and (max-width:1100px){#msheet .grid,#msheet .mgrp{grid-template-columns:repeat(3,1fr)} #msheet .panel{max-width:820px;margin:0 auto} #mbar{padding-left:max(10px,calc(50vw - 380px)) !important}}
