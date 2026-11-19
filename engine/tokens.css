@@ -31,10 +31,10 @@
   --ok:#1F8A5B;             /* correct, done */
   --ok-text:#17694A;        /* green text on white */
   --ok-soft:#E6F4EC;        /* right option fill */
-  --locked:#9AA9C4;         /* dashed outlines of locked things */
+  --locked:#6F7F9E;         /* dashed outlines of locked things */
   --locked-fill:#F2F5FB;    /* their fill */
   /* subject covers: notebook tiles and schedule cards, keyed by the catalog's subject key */
-  --cover-fysiki:#C2571A;
+  --cover-fysiki:#B04F17;
   --cover-mathimatika:#1E4DB7;
   --cover-istoria:#6B3FA0;
 

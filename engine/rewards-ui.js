@@ -264,7 +264,7 @@
   // the quest is today's. PLAN_WAIT_MS is only a safety net for a request that neither loads nor fails: the quest is then
   // built with what has arrived, and kept for the day.
   const PLAN_WAIT_MS = 3000;
-  const PLAN_FILES = [['PLAN', 'plan.js?v=0269878cb6'], ['NOOS_UNITS', 'units.js?v=0269878cb6']];
+  const PLAN_FILES = [['PLAN', 'plan.js?v=347c49db34'], ['NOOS_UNITS', 'units.js?v=347c49db34']];
   // planUsed, unitsUsed: what was handed to Rewards.usePlan on settling
   let planSettled = false, planAsked = false, planUsed = null, unitsUsed = null;
   const planWaiters = [];
@@ -329,9 +329,9 @@
         try { if (window.Sync.boot({ config: window.NOOS_SYNC }).status === 'off') return; } catch (e) { console.error(e); return; }
         ready();
       };
-      if (window.Sync) start(true); else addScript('engine/sync.js?v=0269878cb6', start);
+      if (window.Sync) start(true); else addScript('engine/sync.js?v=347c49db34', start);
     };
-    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js?v=0269878cb6', boot);
+    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js?v=347c49db34', boot);
   }
   // A chapter page: a pull that changed this page's progress reloads the engine's live store through its own storage
   // listener (as for a write from another tab), then the strip, countdown and guide follow.
@@ -357,6 +357,9 @@
   }
 
   /* ---------- daily quest strip, under the header on kid pages ---------- */
+  // A task's label as printed: without the leading emoji of its activity row («✅ Κουίζ» -> «Κουίζ», as Engine.shell.name).
+  // Print time only: the stored quest keeps the row's label (P8).
+  const taskLabel = t => { const l = String(typeof t.label === 'string' ? t.label : t.key).trim(), n = l.replace(/^[^\p{L}\p{N}]+/u, '').trim(); return n || l; };
   // While the plan is pending, ensureQuest builds nothing: only a quest already stored for today is shown.
   function questStrip() {
     const rw = R(), eng = E(), pid = pageId();
@@ -385,7 +388,7 @@
     const rest = st.tasks.filter(t => t.pageId !== pid);
     for (const t of st.tasks) {
       if (t.pageId !== pid) continue;
-      const label = typeof t.label === 'string' ? t.label : String(t.key);
+      const label = taskLabel(t);
       const target = Number(t.target) || 0, count = Math.min(Number(t.count) || 0, target);
       const chip = el('span', 'rw-task' + (t.done ? ' done' : ''));
       const tip = t.type === 'hit' ? TXT.questHit(target, label)
@@ -424,7 +427,7 @@
     box.classList.add('rw-qtrail');
     const ico = (n, size) => (window.Icons && typeof Icons.svg === 'function' ? Icons.svg(n, { size }) : '');   // static sprite markup
     const tipOf = t => {
-      const label = typeof t.label === 'string' ? t.label : String(t.key), target = Number(t.target) || 0;
+      const label = taskLabel(t), target = Number(t.target) || 0;
       return t.type === 'hit' ? TXT.questHit(target, label) : t.key === 'cards' && target > 1 ? TXT.questCards(target, label) : TXT.questList(label);
     };
     const trail = el('div', 'rw-trail');

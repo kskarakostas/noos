@@ -474,7 +474,7 @@ body.fit-ch02 #wsearch .sh-actions .btn.ghost{flex:1 1 auto;min-height:var(--btn
 }
 /* the rail's width: the table beside its controls; the other games in an 800 px column */
 @media(min-width:1100px){
-  html.sh .pg-dim5_mathimatika_ch10 main>section:is(#frogs,#blitz,#mem,#prob,#solver){max-width:800px}
+  html.sh .pg-dim5_mathimatika_ch10 main>section:is(#frogs,#mem){max-width:800px}   /* #blitz, #prob, #solver: the 760 px column (engine-ui.css, P2) */
   .pg-dim5_mathimatika_ch10 #table .sh-body{display:grid;grid-template-columns:288px minmax(0,1fr);gap:24px}
   .pg-dim5_mathimatika_ch10 #table .mt-pick{align-items:flex-start}
   .pg-dim5_mathimatika_ch10 #table .mt-pk{flex-direction:column;align-items:flex-start;gap:4px}
@@ -709,6 +709,7 @@ body.fit-ch10b #sOut details summary{min-height:var(--tap);padding:10px 0;box-si
 @media(min-width:1100px){
   :is(#build,#trip,#add,#groups,#robot).d3m-en01 .sh-fb{border-radius:var(--r-card);padding:16px 20px}
   #times.d3m-en01 #ttBox{padding-bottom:24px}
+  #build.d3m-en01 .sh-body>p.muted{margin-left:auto;margin-right:auto}   /* centred, under the 34em measure (engine-ui.css, P2) */
 }
 /* fit dim3_mathimatika_en01: end */
 /* fit dim3_mathimatika_en01b: begin */

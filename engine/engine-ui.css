@@ -22,7 +22,7 @@
      <div class="sh-body">...</div>                     content region: flexes, scrolls on its own when too tall
      <div class="sh-actions">                           action row, anchored at the bottom (12 px above, 16 px below)
        <button class="sh-help">(icon) Βοήθεια</button>  help, only when the game has it (56 px high)
-       <button class="sh-primary" data-primary>Έλεγχος</button>   the primary button: flex 1, 56 px, the one primary style
+       <button class="sh-primary" data-primary>Έλεγχος</button>   the primary button: flex 1 (480 px at most from 1100 px), 56 px, the one primary style
        <button class="sh-skip" aria-label="Επόμενο">(icon)</button>   skip or next, 56 px square
      </div>
      <div class="sh-fb"></div>                          feedback panel: empty or [hidden] is not shown; with content it
@@ -107,6 +107,19 @@ html.sh .sh-top .rw-snd{width:var(--tap);height:var(--tap);min-width:var(--tap);
   border:0;border-radius:12px;background:rgba(255,255,255,.16);color:var(--white);box-shadow:none}
 html.sh .sh-top .rw-snd[aria-pressed="true"]{background:rgba(255,255,255,.3);border:0}
 @media(max-width:359.98px){html.sh body>header.sh-top{gap:6px;padding:8px}}
+/* P4 (round 3 polish): on the chapter start view below 1100 px the title is the label's whole message: it wraps to two
+   lines at 15 px under the context line. A title that still does not fit takes the context line's place on up to three
+   lines (sh-lab3), then at 14 px (sh-lab14), then 13 px (sh-lab13): engine.js Engine.shell._labFit adds them in turn
+   while the title overflows. The label grows to 60 px at most, inside the 64 px bar; in an activity it stays one line. */
+@media(max-width:1099.98px){
+  html.sh[data-sh-view="home"] .sh-top .sh-label{height:auto;min-height:48px}
+  html.sh[data-sh-view="home"] .sh-top .sh-title{font-size:var(--fs-body-sm);line-height:1.1;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  html.sh[data-sh-view="home"] .sh-top .sh-label.sh-lab3{padding-left:8px;padding-right:8px}
+  html.sh[data-sh-view="home"] .sh-top .sh-lab3 .sh-ctx{display:none}
+  html.sh[data-sh-view="home"] .sh-top .sh-lab3 .sh-title{-webkit-line-clamp:3}
+  html.sh[data-sh-view="home"] .sh-top .sh-lab14 .sh-title{font-size:14px}
+  html.sh[data-sh-view="home"] .sh-top .sh-lab13 .sh-title{font-size:var(--fs-small)}
+}
 
 /* ---------- chapter start view (round 3, W3, mockup 03): the card, the mission, the stages with their tiles ---------- */
 .sh-hcard{background:var(--white);border:var(--outline);border-radius:var(--r-card);padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -318,9 +331,11 @@ html.sh .sh-round.sh-fit7 .sh-fb .rw-boss-taunt+span{display:block;margin-top:4p
 .sh-end-stars{flex:none;display:flex;align-items:flex-end;gap:6px;margin:4px 0 6px}
 .sh-end-st{display:block;transform:translateY(10px)}
 .sh-end-st.mid{transform:translateY(-6px)}
-.sh-end-st .icon{display:block;width:72px;height:72px;color:var(--white);stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+/* P1 (round 3 polish): an earned star is filled yellow with the ink outline; an unearned one is an outline only, in the
+   cover's secondary text colour (the same rule for the rail's stars, which also sit on the cover colour) */
+.sh-end-st .icon{display:block;width:72px;height:72px;fill:none;stroke:var(--cover-text);stroke-width:2;stroke-linejoin:round}
 .sh-end-st.mid .icon{width:96px;height:96px}
-.sh-end-st.on .icon{color:var(--star)}
+.sh-end-st.on .icon{fill:var(--star);stroke:var(--ink);stroke-width:1.6}
 .sh-end-tag{flex:none;margin:8px 0 0;display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;padding:8px 14px;border-radius:999px;
   background:rgba(255,255,255,.16);font:var(--fw-bold) 15px/1.3 var(--font)}
 .sh-end-tag .icon{width:18px;height:18px}
@@ -338,7 +353,7 @@ html.sh .sh-round.sh-fit7 .sh-fb .rw-boss-taunt+span{display:block;margin-top:4p
 .sh-end-stk{flex:none;align-self:stretch;box-sizing:border-box;display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--white);color:var(--ink);
   border-radius:8px;border-top:var(--label-rule);border-bottom:var(--label-rule);text-align:left}
 .sh-end-disc{flex:none;box-sizing:border-box;width:64px;height:64px;border-radius:32px;background:var(--star);border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;transform:rotate(-8deg)}
-.sh-end-disc .icon{width:40px;height:40px}
+.sh-end-disc .icon{width:46px;height:46px}
 .sh-end-disc.gold .icon{width:32px;height:32px;color:var(--ink);stroke-width:2.4}
 .sh-end-stkt{min-width:0;display:flex;flex-direction:column}
 .sh-end-stkt b{font:var(--fw-bold) 17px/1.25 var(--font)}
@@ -372,7 +387,7 @@ html.sh .sh-round.sh-fit7 .sh-fb .rw-boss-taunt+span{display:block;margin-top:4p
   .sh-end-st.mid .icon{width:76px;height:76px}
   .sh-end-h{font-size:30px}
   .sh-end-disc{width:52px;height:52px}
-  .sh-end-disc .icon{width:32px;height:32px}
+  .sh-end-disc .icon{width:38px;height:38px}
 }
 @media(min-width:1100px){html.sh .sh-end{left:var(--rail-w)}}
 
@@ -447,7 +462,25 @@ html.sh .fc-tools .seg button{flex:0 0 auto !important;min-height:var(--tap);pad
 @media(min-width:1100px){
   html.sh body{padding-left:var(--rail-w)}
   html.sh .sh-bar,html.sh.sh-barvis .sh-bar{display:none}   /* the rail replaces the bottom bar */
-  html.sh main>section{max-width:980px;padding:24px 32px 32px}
+  /* P2 (round 3 polish): the column of an activity (and its action row) is 760 px, centred, for reading, typing and choosing;
+     the games that use the width on purpose (the scale, the float tank, the tables, word search, memory) 960 px; quiz,
+     true/false and boss 800 px (below); the start view keeps 980 px for its three tiles a row */
+  html.sh main>section{max-width:760px;padding:24px 32px 32px}
+  html.sh main>section#shHome{max-width:980px}
+  html.sh main>section:is(#bal,#sink,#table,#trip,#wsearch),html.sh main>section.gm-frame:has(.gm-mem,.gm-ws){max-width:960px}
+  /* P2: no line of body text longer than 80 characters, also in the wider columns: an intro or note line, a summary
+     paragraph, a list item, a callout or an explanation keeps a measure of 34em (about 78 characters of this font at its
+     narrowest); one whose text is centred stays centred */
+  html.sh main>section:not(#shHome) :is(p.muted,p.note,p.gm-intro,li,.callout,.expl),html.sh #sum p{max-width:34em}
+  html.sh main>section:not(#shHome) :is(p,li,.callout,.expl):is([style*="text-align:center"],[style*="text-align: center"]),
+  html.sh .fc-frame .fc-body>.note{margin-left:auto;margin-right:auto}
+  /* R2 (round 3 polish follow-up, K. S. Karakostas, 19 Nov 2026): no button of an action row is wider than 480 px (the
+     primary, a lone «Νέο παιχνίδι», a next button that widens after a verdict; help and skip are narrower anyway); the
+     row's controls stay one group, in their order and gaps, centred in the column. A group of two answer buttons that
+     carries data-primary (#bal, #sink, Σωστό or Λάθος) keeps the row's width: its buttons are answer options. A page
+     rule that places a row's single control on purpose (#trip, #pick: flex-end) keeps winning by its id. */
+  .sh-actions{justify-content:center}
+  .sh-actions>button{max-width:480px}
   .sh-top{background:var(--white);border-bottom:2px solid var(--ink);gap:16px}
   html.sh body>header.sh-top{padding:0 24px}
   .sh-top .sh-back{background:var(--white);color:var(--ink);border:var(--outline)}
@@ -468,7 +501,13 @@ html.sh .fc-tools .seg button{flex:0 0 auto !important;min-height:var(--tap);pad
   .sh-rprog .sh-track{flex:none;width:100%}
   .sh-rstars{display:flex;align-items:center;gap:4px;font:var(--fw-bold) var(--fs-small) var(--font)}
   .sh-rstars .icon{width:14px;height:14px}
-  .sh-rnav{flex:1 0 auto;display:flex;flex-direction:column;gap:14px}
+  /* P6 (round 3 polish): the activities are the part of the rail that scrolls, the parent link stays pinned under them; the
+     6 px pad keeps a row's focus ring inside the scroll box; engine.js (Engine.shell._railCut) sets sh-rcut while rows are
+     hidden below the bottom edge, which then fades out */
+  .sh-rnav{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:14px;margin:0 -6px;padding:0 6px 6px;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-width:thin;scrollbar-color:var(--cover-text) transparent}
+  .sh-rnav.sh-rcut{-webkit-mask-image:linear-gradient(to bottom,black calc(100% - 48px),transparent);mask-image:linear-gradient(to bottom,black calc(100% - 48px),transparent)}
+  .sh-rfoot{flex:none}
   .sh-rgrp{display:flex;flex-direction:column;gap:4px}
   .sh-rghead{padding:0 12px;font:var(--fw-bold) var(--fs-small) var(--font);color:var(--cover-text)}
   .sh-rrow{min-height:var(--tap);padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;border:0;border-radius:10px;
@@ -484,7 +523,9 @@ html.sh .fc-tools .seg button{flex:0 0 auto !important;min-height:var(--tap);pad
   .sh-rstate .sh-track{flex:none;width:56px;background:rgba(255,255,255,.3)}
   .sh-rstate .sh-track>span{background:var(--star)}
   .sh-rrow.on .sh-rstate .sh-track{background:var(--grid)}
-  .sh-rstate .sh-st .icon{stroke:currentColor}
+  .sh-rstate .sh-st .icon{fill:none;stroke:var(--cover-text);stroke-width:2}   /* P1: on the cover colour, as the end screen */
+  .sh-rstate .sh-st.on .icon{fill:var(--star);stroke:var(--ink);stroke-width:1.6}
+  .sh-rrow.on .sh-rstate .sh-st:not(.on) .icon{stroke:var(--ink);stroke-width:1.6}   /* the open row is white: as on the tiles */
   .sh-rstate .sh-new{background:var(--white);color:var(--cover)}
   .sh-rfoot .sh-plink{width:100%;justify-content:flex-start;border-radius:10px;background:rgba(255,255,255,.16);color:var(--white)}
   /* rounds: a 2 x 2 grid of options, the feedback inline under them as a card */
@@ -502,7 +543,14 @@ html.sh .fc-tools .seg button{flex:0 0 auto !important;min-height:var(--tap);pad
   :is(.sh-frame,.sh-col):has(>.sh-fbkeep:not(:empty):not([hidden]):not([style*="display: none"]):not([style*="display:none"]))>.sh-actions{margin:0;padding:12px 0 16px;background:none}
   html.sh body>header.sh-top:has(>.sh-owl.open){padding:8px 24px}
 }
-/* a touch screen at the rail's width: the rows stay 44 px (they are); nothing smaller is added */
+/* P6: under 900 px of height the rail's groups sit closer and, for a mouse or trackpad only, its rows are 40 px high */
+@media(min-width:1100px) and (max-height:899.98px){
+  .sh-rnav{gap:8px}
+  .sh-rgrp{gap:2px}
+}
+@media(min-width:1100px) and (max-height:899.98px) and (pointer:fine){.sh-rrow{min-height:40px}}
+/* a touch screen at the rail's width (any coarse pointer, a touch laptop too): the rows stay 44 px */
+@media(min-width:1100px) and (any-pointer:coarse){.sh-rrow{min-height:var(--tap)}}
 
 /* ---------- focus and motion (W8) ----------
    A visible ring on every control of the shell: 3 px, 2 px off the control, in --ring: the cover colour on paper and white,

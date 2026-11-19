@@ -552,8 +552,28 @@
     return '<' + tag + ' class="hub-nb"' + (nb.link ? ' href="' + esc(nb.link) + '"' : '') + ' data-subj="' + esc(s.key) + '" data-unit="' + esc(nb.unit)
       + '" style="--subj:' + esc(coverOf(s)) + '"><span class="hub-nbl"><b class="hub-nbs">' + esc(s.name || s.key) + '</b>'
       + (nb.base.ch ? '<span class="hub-nbc">' + esc(chShort(nb.base.ch)) + '</span>' : '')
-      + '<span class="hub-nbt">' + esc(nb.base.title || nb.unit) + '</span></span>'
+      + '<span class="hub-nbt" aria-hidden="true" data-full="' + esc(nb.base.title || nb.unit) + '">' + esc(nb.base.title || nb.unit) + '</span>'
+      + '<span class="hub-sr">' + esc(nb.base.title || nb.unit) + '</span></span>'
       + (nb.max ? ratio(nb.stars, nb.max, 'hub-nbr', true) : '') + '</' + tag + '>';
+  }
+  // P3: a notebook title longer than its three lines ends after its last whole word that fits, then «…» (the CSS clamp alone
+  // cuts inside a word). Fitted again whenever the notebook row changes size (shown, resized): the row's size does not depend
+  // on the titles, so fitting never triggers itself. Screen readers read the full title from the label's hidden copy.
+  function fitTitles(grid) {
+    for (const el of grid.querySelectorAll('.hub-nbt[data-full]')) {
+      const words = el.dataset.full.split(/\s+/);
+      el.textContent = el.dataset.full;
+      while (words.length > 1 && el.scrollHeight > el.clientHeight + 1) { words.pop(); el.textContent = words.join(' ') + '…'; }
+    }
+  }
+  const nbFit = typeof ResizeObserver === 'function' ? new ResizeObserver(es => { for (const e of es) fitTitles(e.target); }) : null;
+  let nbFonts = false;   // the self-hosted font arriving after the first fit changes the widths: fit again then
+  function nbObserve(host) {
+    if (!nbFit) return;
+    for (const g of host.querySelectorAll('.hub-nbgrid')) nbFit.observe(g);
+    if (nbFonts || !document.fonts || typeof document.fonts.addEventListener !== 'function') return;
+    nbFonts = true;
+    document.fonts.addEventListener('loadingdone', () => { for (const g of document.querySelectorAll('.hub-nbgrid')) fitTitles(g); });
   }
   // «Επανάληψη»: the weakest done unit (the unit of the first page of subjectBlocks' review, weakest first), with its stars
   // and its weakest activity (the counted row with the lowest value; never played first).
@@ -636,22 +656,25 @@
       : '<span class="hub-go off" aria-disabled="true">' + ico('play', { size: 20 }) + '<span>' + esc(TXT.go) + '</span></span>';
     const hid = 'hubTodayH_' + k.key, nid = 'hubBooksH_' + k.key, rid = 'hubRevH_' + k.key;
     const rows = reviewRow(k, c, ps, score) + testRow(k, c, ps);
-    setHTML(host, '<section class="hub-card hub-todaycard' + (q.allDone ? ' all' : '') + '" aria-labelledby="' + hid + '"><div class="hub-trow"><h2 id="' + hid + '">'
+    if (nbFit) for (const g of host.querySelectorAll('.hub-nbgrid')) nbFit.unobserve(g);
+    setHTML(host,'<section class="hub-card hub-todaycard' + (q.allDone ? ' all' : '') + '" aria-labelledby="' + hid + '"><div class="hub-trow"><h2 id="' + hid + '">'
       + esc(TXT.today) + '</h2>' + trail + '</div><div class="hub-say"><p>' + esc(say) + '</p>' + mini + '</div>' + go + '</section>'
       + '<section class="hub-nbs" aria-labelledby="' + nid + '"><h2 id="' + nid + '">' + esc(TXT.books) + '</h2><div class="hub-nbgrid">'
       + nbs.map(notebookHTML).join('') + '</div></section>'
       + '<section class="hub-revs" aria-labelledby="' + rid + '"><h2 id="' + rid + '">' + esc(TXT.review) + '</h2>'
       + (rows || '<p class="hub-empty">' + esc(TXT.reviewNone) + '</p>') + '</section>');
+    nbObserve(host);
   }
 
   /* ---------- «Τετράδια»: per subject, its units in catalog order with their state, and each unit's pages ---------- */
   // States as Rewards.kidSubjects gives them: done, current (the class unit and units unlocked on the device), upcoming
   // (named, with a padlock, no page tiles: as the round 2 teaser) and hidden (not drawn). A subject without a schedule shows
   // every unit and page with no state, as before. `c` null (teacher view, no Rewards): titles only, no progress.
-  function tileHTML(k, p, c) {
+  // `top`: the small line of a unit with one page (its chapter and state), drawn above the title (P5)
+  function tileHTML(k, p, c, top) {
     const id = String(p.id), link = href(p.file), tag = link ? 'a' : 'div';
     const lv = Array.isArray(p.badge) && isStr(p.badge[1]) ? plainLabel(p.badge[1]) : '';
-    let body = '<span class="hub-tl"><span class="hub-tn">' + esc(p.title || id) + '</span>' + (lv ? '<span class="hub-lv">' + esc(lv) + '</span>' : '') + '</span>';
+    let body = (top || '') + '<span class="hub-tl"><span class="hub-tn">' + esc(p.title || id) + '</span>' + (lv ? '<span class="hub-lv">' + esc(lv) + '</span>' : '') + '</span>';
     if (c) {
       const st = pageStat(c, id);
       body += st.max ? ratio(st.stars, st.max, 'hub-tr', true) : '<span class="hub-tns">' + esc(TXT.notStarted) + '</span>';
@@ -668,9 +691,17 @@
         const st = unitState(e, pages);
         if (st === 'hidden') return '';
         const base = baseOf(u, pages), chip = STATE_CHIP[st];
+        const stHTML = chip ? '<span class="hub-ust">' + ico(chip[0], { size: 16 }) + esc(TXT[chip[1]]) + '</span>' : '';
+        // P5: a unit with one page is its tile (no heading that repeats the title); its chapter and state are the tile's small
+        // line. An upcoming unit has no tile, so it keeps its heading.
+        if (pages.length === 1 && st !== 'upcoming') {
+          const top = base.ch || stHTML ? '<span class="hub-tch">' + (base.ch ? '<span>' + esc(base.ch) + '</span>' : '') + stHTML + '</span>' : '';
+          return '<div class="hub-unit hub-unit1' + (st ? ' ' + st : '') + '" data-unit="' + esc(u) + '" data-state="' + st + '"><div class="hub-pages">'
+            + tileHTML(k, pages[0], c, top) + '</div></div>';
+        }
         return '<div class="hub-unit' + (st ? ' ' + st : '') + '" data-unit="' + esc(u) + '" data-state="' + st + '"><div class="hub-uh"><span class="hub-ut">'
           + (base.ch ? '<span class="hub-uch">' + esc(base.ch) + '</span>' : '') + '<b>' + esc(base.title || u) + '</b></span>'
-          + (chip ? '<span class="hub-ust">' + ico(chip[0], { size: 16 }) + esc(TXT[chip[1]]) + '</span>' : '') + '</div>'
+          + stHTML + '</div>'
           + (st === 'upcoming' ? '' : '<div class="hub-pages">' + pages.map(p => tileHTML(k, p, c)).join('') + '</div>') + '</div>';
       }).join('');
       return '<section class="hub-subj" data-subj="' + esc(s.key) + '" style="--subj:' + esc(coverOf(s)) + '"><h2>' + esc(s.name || s.key) + '</h2>' + units + '</section>';
@@ -695,8 +726,9 @@
     return '<span class="hub-aratio" role="img" aria-label="' + esc(label) + '"><span class="hub-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></span>'
       + '<b class="hub-num">' + esc(n + ' / ' + max) + '</b></span>';
   }
-  // The sticker owl (D11: the mascot-sticker symbol of engine/icons.svg) on a sticker disc: empty states and generic stickers.
-  const owlDisc = () => '<span class="hub-disc hub-owl" aria-hidden="true">' + ico('mascot-sticker', { size: 40 }) + '</span>';
+  // The owl of the empty notes: the mark (the owl of the login screen and the icon), so one mascot shows until the art pass
+  // (P9). Generic stickers keep the sticker owl (mascot-sticker) on their disc, see stickerHTML.
+  const owlDisc = () => '<span class="hub-owl" aria-hidden="true">' + ico('mark', { size: 48 }) + '</span>';
   const emptyHTML = text => '<div class="hub-awempty">' + owlDisc() + '<p>' + esc(text) + '</p></div>';
   function moreHTML(what, kid, open, label) {
     return '<button type="button" class="hub-more" data-more="' + what + '" aria-expanded="' + open + '" aria-controls="hubAw_' + what + '_' + esc(kid) + '">'
@@ -1052,7 +1084,7 @@
       if (!pages.length) continue;
       box.appendChild(mk('h5', '', String(k.grade || k.key)));
       for (const { p } of pages) {
-        const row = dateRow(k, p, c, 'rwT_', (p.emo ? p.emo + ' ' : '') + String(p.title || p.id || ''));
+        const row = dateRow(k, p, c, 'rwT_', String(p.title || p.id || ''));
         if (row) box.appendChild(row);
       }
     }
@@ -1103,7 +1135,7 @@
       if (!pages.length) continue;
       box.appendChild(mk('h5', '', String(k.grade || k.key)));
       for (const { p } of pages) {
-        const id = p.id, row = mk('div', 'rw-trow rw-orow'), lab = mk('span', 'rw-tlab', (p.emo ? p.emo + ' ' : '') + String(p.title || id));
+        const id = p.id, row = mk('div', 'rw-trow rw-orow'), lab = mk('span', 'rw-tlab', String(p.title || id));
         const out = mk('span', 'rw-msg');
         out.setAttribute('role', 'status');
         row.dataset.page = id;
@@ -1361,7 +1393,7 @@
       let card = document.getElementById(cid);
       if (!subs.length) { if (card) card.remove(); planMsgs.delete(k.key); planLines.delete(k.key); continue; }
       const U = c.rw.kidStore(k.key).unlocked, st = c.rw.kidSubjects(window.CATALOG, window.PLAN, k.key, U);
-      const names = new Map(pagesOf(k).map(({ p }) => [String(p.id), (p.emo ? p.emo + ' ' : '') + String(p.title || p.id)]));
+      const names = new Map(pagesOf(k).map(({ p }) => [String(p.id), String(p.title || p.id)]));
       const name = id => names.get(id) || id;
       if (!card) { card = mk('div', 'rw-pcard rw-plancard'); card.id = cid; }
       card.dataset.mode = mode;

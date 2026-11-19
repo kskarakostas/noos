@@ -1216,6 +1216,10 @@ Engine.shell={
       if(S._owlHide)S._owlHide()});
     /* the end screen is modal below the rail breakpoint only: aria-modal follows a resize */
     window.addEventListener('resize',()=>document.querySelectorAll('main .sh-end').forEach(e=>Engine._endModal(e)));
+    /* P4 and P6 (round 3 polish): the start view's title and the rail's fade follow a resize, the scroll and the fonts */
+    window.addEventListener('resize',()=>{S._labFit();S._railCut()});
+    rail.querySelector('#shRNav').addEventListener('scroll',()=>S._railCut(),{passive:true});
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{S._labFit();S._railCut()});
     /* bottom bar: one item per group that has activities */
     const m=S.model({tabs:S.tabs}),bar=document.createElement('nav');
     bar.id='shBar';bar.className='sh-bar';bar.setAttribute('aria-label','Ενότητες κεφαλαίου');
@@ -1456,7 +1460,8 @@ Engine.shell={
     const t=n.querySelector('.sh-owlt'),hide=()=>{clearTimeout(S._owlT);n.classList.remove('on','open')},later=ms=>{clearTimeout(S._owlT);S._owlT=setTimeout(hide,ms)};
     S._owlHide=hide;
     n.addEventListener('click',()=>{if(!n.classList.contains('open')&&t.scrollHeight>t.clientHeight+1){n.classList.add('open');later(8000);Engine._refit()}else hide()});
-    new MutationObserver(()=>{const x=say.textContent.trim();if(!x||!S.view||S.view==='home')return;
+    /* P8: the line as printed and read, without its emoji (the page's own #owlSay keeps them) */
+    new MutationObserver(()=>{const x=say.textContent.replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u200D\uFE0F\u20E3]/gu,'').replace(/\s+([.,;:!?])/g,'$1').replace(/\s+/g,' ').trim();if(!x||!S.view||S.view==='home')return;
       S.announce(x);
       if(S._endOpen()){hide();return}
       t.textContent=x;n.classList.remove('open');n.classList.add('on');later(Math.max(4000,Math.min(7000,2500+x.length*40)));Engine._refit()})
@@ -1475,6 +1480,7 @@ Engine.shell={
     const tab=S.tabs.find(x=>x[0]===t);
     S._text('shCtx',home?S.ctx:[S.head,S.title].filter(Boolean).join(', '));
     S._text('shTitle',home||!tab?S.title:S.name(tab[1]));
+    S._labFit();
     /* the label's name is its whole text (the phone cuts it with an ellipsis); the page title follows the view */
     const lab=document.getElementById('shLabel'),full=home||!tab?[S.title,S.ctx]:[S.name(tab[1]),S.head,S.title];
     if(lab)lab.setAttribute('aria-label',full.filter(Boolean).join(', '));
@@ -1499,6 +1505,22 @@ Engine.shell={
     const b=sec&&sec.classList.contains('sum-frame')?sec.querySelector('.sum-body'):null,m=b||document.querySelector('main');
     if(!m||(b&&!sec.classList.contains('sum-full')))return;
     if(m.scrollHeight-m.scrollTop-m.clientHeight<=32)S.markSummaryRead();
+  },
+  /* P4 (round 3 polish): on the start view below the rail a title that does not fit two lines takes the context line's
+     place on three lines, then a smaller size (classes sh-lab3, sh-lab14, sh-lab13 added in turn while it overflows,
+     engine-ui.css); measured again on each view change, resize and once the fonts are in. Off the start view (and at the
+     rail's width, where the title is one line) none is set. */
+  _labFit(){
+    const lab=document.getElementById('shLabel'),t=document.getElementById('shTitle'),L=['sh-lab3','sh-lab14','sh-lab13'];
+    if(!lab||!t)return;
+    lab.classList.remove(...L);
+    if(Engine.shell.view!=='home')return;
+    for(const c of L){if(t.scrollHeight<=t.clientHeight+1)break;lab.classList.add(c)}
+  },
+  /* P6 (round 3 polish): the rail's list of activities fades out at its bottom edge while rows are hidden below it */
+  _railCut(){
+    const n=document.getElementById('shRNav');if(!n)return;
+    const m=n.scrollHeight-n.clientHeight;n.classList.toggle('sh-rcut',m>1&&n.scrollTop<m-1);
   },
   _railOn(){const t=Engine.shell.view;$$('#shRail [data-t]').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
     const rn=document.getElementById('shRNav');if(rn){rn._roveT=null;Engine.shell._roveFix(rn,'.sh-rrow')}},
@@ -1534,6 +1556,7 @@ Engine.shell={
     const rn=document.getElementById('shRNav');
     S._html(rn,m.groups.map(gr=>`<div class="sh-rgrp" role="group" aria-label="${esc(gr.name)}"><div class="sh-rghead" aria-hidden="true">${esc(gr.name)}</div>${gr.items.map(it=>
       `<button type="button" class="sh-rrow${it.locked?' is-locked':''}" data-t="${esc(it.t)}"${it.locked?lockA(it):''}><span class="sh-rname">${esc(it.name)}</span><span class="sh-rstate">${S.stateHtml(it)}</span></button>`).join('')}</div>`).join(''));
+    S._railCut();S._labFit();   /* P6, P4: the rows may have changed, and the chip's star count the label's room */
     /* what opens each locked step, the description of its tile and row (W8) */
     S._html(document.getElementById('shWhyTxt'),S.tabs.filter(([t])=>locks[t]).map(([t])=>`<span id="${S.whyId(t)}">${esc(S.whyText(path,S.tabs,t))}</span>`).join(''));
     S._railOn();

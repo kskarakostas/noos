@@ -146,12 +146,26 @@ body.hub.hub-teach{padding-bottom:0}
 .hub-nb{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:space-between;gap:6px;padding:10px 8px;overflow:hidden;background:var(--subj,var(--cover));border-left:var(--spine-w) solid var(--ink);border-radius:6px 12px 12px 6px;text-decoration:none}
 .hub a.hub-nb{color:var(--ink)}
 .hub-nbl{min-width:0;min-height:0;display:flex;flex-direction:column;gap:2px;padding:6px;overflow:hidden;background:var(--white);border-radius:4px;border-top:var(--label-rule);border-bottom:var(--label-rule)}
-.hub-nbs{font-size:13px;font-weight:800;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}
+/* P3: .hub-nbs names both the notebooks section and the subject line of a label; words break only when one is wider than
+   the label (no hyphenation), the subject stays on one line, the title takes up to three lines, then an ellipsis */
+.hub-nbs{font-size:13px;font-weight:800;line-height:1.2}
+.hub-nbl>.hub-nbs{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hub-nbc{font-size:12px;font-weight:600;line-height:1.2;color:var(--mute)}
-.hub-nbt{font-size:12px;line-height:1.2;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hub-nbt{font-size:12px;font-weight:400;line-height:1.2;overflow-wrap:break-word;hyphens:manual;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .hub-nbr{flex:none;flex-wrap:wrap;gap:4px}
 .hub-nbr .hub-num{font-size:15px;color:var(--white)}
 .hub-nbr .hub-bar{flex:1 0 100%;height:10px;border-radius:5px;background:rgba(255,255,255,.35)}
+/* P3 on a phone: a wider label (less cover around it, a smaller gap) so the longest words fit whole; a kid with one
+   notebook gets it two columns wide, so its subject fits on one line */
+@media (max-width:559px){
+  .hub-nbgrid{gap:8px}
+  .hub-nb{padding:10px 4px}
+  .hub-nbl{padding:6px 3px}
+  .hub-nbgrid>.hub-nb:only-child{grid-column:span 2}
+}
+@media (max-width:379px){
+  .hub-nbl>.hub-nbs{font-size:12px}
+}
 .hub-revs{flex:none;display:flex;flex-direction:column;gap:8px}
 .hub-rev{min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:var(--white);border:var(--outline);border-radius:var(--r-tile);text-decoration:none}
 .hub a.hub-rev{color:var(--ink)}
@@ -192,6 +206,9 @@ body.hub.hub-teach{padding-bottom:0}
 .hub-lv{flex:none;font-size:12px;font-weight:600;color:var(--mute)}
 .hub-tns{font-size:13px;font-weight:600;color:var(--mute)}
 .hub-tcount{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--rule-text)}
+/* P5: a unit with one page is its tile: the chapter and the state chip on the small line, the whole title below */
+.hub-tch{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;font-size:12px;font-weight:600;color:var(--mute)}
+.hub-unit1 .hub-tn{white-space:normal;overflow-wrap:break-word}
 
 /* «Βραβεία» (round 3, W6a): one card per block. Ratios: the bar, then «n / max». Earned: a solid card, its art on a yellow
    disc turned like the sticker of mockup 06; locked: a dashed grey tile with a padlock. The album and the badge wall show
@@ -224,7 +241,9 @@ body.hub.hub-teach{padding-bottom:0}
 }
 /* the disc: earned art on yellow with an ink outline, turned; the owl on it is the sticker of mockup 06 */
 .hub-disc{flex:none;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.hub-owl,.on>.hub-disc{background:var(--star);border:var(--outline);transform:rotate(-8deg);color:var(--ink)}
+.on>.hub-disc{background:var(--star);border:var(--outline);transform:rotate(-8deg);color:var(--ink)}
+/* the owl of the empty notes is the mark itself (P9): no disc */
+.hub-owl{flex:none;display:flex}
 .off>.hub-disc{background:var(--white);border:2px dashed var(--locked);color:var(--mute)}
 .hub-emo{font-size:26px;line-height:1}
 /* a sticker: its subject's cover as a 4 px strip at the foot; the boss sticker is gold (a second ring round the disc) */
