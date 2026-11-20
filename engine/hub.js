@@ -125,6 +125,7 @@
     cpNow: t => 'Η τάξη τώρα: ' + t,
     cpPos: (i, n) => 'Κεφάλαιο ' + i + ' από ' + n,
     cpMine: 'Ξεκλείδωτα σε αυτή τη συσκευή:',
+    cpAhead: 'Ξεκλείδωτα πριν από την τάξη, σε όλες τις συνδεδεμένες συσκευές:',
     cpLock: 'Κλείδωσε ξανά',
     cpLockOf: t => 'Κλείδωσε ξανά: ' + t,
     cpNextIs: t => 'Επόμενο: ' + t,
@@ -1321,8 +1322,9 @@
   // Editor, one part per subject: the arrows around the current unit (one unit each way; from no schedule forward is the
   // first unit), its chapter label and title (or «Χωρίς πρόγραμμα»), the test date field of each page of the current unit
   // (dateRow: the kid store's testDates, as in the test dates card), a native select of every unit, with «Χωρίς πρόγραμμα»
-  // only while none is set (a schedule row is never deleted), and the units unlocked on this device with «Κλείδωσε ξανά»
-  // (they still show to the kid). A change goes to Sync.setSchedule, which writes the device copy at once and starts a cycle,
+  // only while none is set (a schedule row is never deleted), the units unlocked ahead of the class with «Κλείδωσε ξανά»
+  // and «Ξεκλείδωσε το επόμενο» for the upcoming unit, as on the device card (the kid store's `unlocked`, which sync carries
+  // to the other signed-in devices; the class position does not move). A schedule change goes to Sync.setSchedule, which writes the device copy at once and starts a cycle,
   // and the hub re-renders at once. Under the parts, the card's state line (schedLines): saved, waiting to sync, or failed
   // with «Δοκίμασε τώρα».
   // Status nodes are reused across rebuilds so they are announced. Focus moves to the control that undoes the tap (device)
@@ -1415,7 +1417,7 @@
         if (mode === 'edit' && e) { editPart(part, c, k, s, e, sid, h, name); continue; }
         if (!e || !e.active) { part.appendChild(mk('p', 'rw-psub rw-cphint', TXT.cpNone)); continue; }
         part.appendChild(mk('p', 'rw-cpnow', TXT.cpNow(name(e.current))));
-        unlockedPart(part, k, s, e, sid, h, out, name, true);
+        unlockedPart(part, k, s, e, sid, h, out, name, TXT.cpMine);
       }
       card.appendChild(out);
       if (mode === 'edit') {
@@ -1433,12 +1435,12 @@
     if (planFocus) { const f = planFocus; planFocus = null; focusFirst(f); }
     else if (keep && document.activeElement !== document.getElementById(keep)) focusFirst([keep]);
   }
-  // The units after the class unit that are unlocked on this device, each with «Κλείδωσε ξανά»; then, with `next`, the
-  // upcoming unit with «Ξεκλείδωσε το επόμενο».
-  function unlockedPart(box, k, s, e, sid, h, out, name, next) {
+  // The units after the class unit that are unlocked (the kid store's `unlocked`), under the heading `head`, each with
+  // «Κλείδωσε ξανά»; then the upcoming unit with «Ξεκλείδωσε το επόμενο».
+  function unlockedPart(box, k, s, e, sid, h, out, name, head) {
     const units = unitsIn(s, e), state = u => e.states[units.get(u)[0]];
-    const mine = [...units.keys()].filter(u => u !== e.current && state(u) === 'current');   // unlocked on this device
-    if (mine.length) box.appendChild(mk('p', 'rw-week-wh', TXT.cpMine));
+    const mine = [...units.keys()].filter(u => u !== e.current && state(u) === 'current');   // unlocked ahead of the class
+    if (mine.length) box.appendChild(mk('p', 'rw-week-wh', head));
     for (const u of mine) {
       const row = mk('div', 'rw-trow'), lock = tbtn('lock', TXT.cpLock);
       lock.id = sid + '_lock_' + u;
@@ -1453,7 +1455,7 @@
       row.append(mk('span', 'rw-tlab', name(u)), lock);
       box.appendChild(row);
     }
-    const up = next ? [...units.keys()].find(u => state(u) === 'upcoming') : undefined;
+    const up = [...units.keys()].find(u => state(u) === 'upcoming');
     if (up === undefined) return;
     const is = mk('p', 'rw-psub', TXT.cpNextIs(name(up))), go = tbtn('play', TXT.cpNext);
     is.id = sid + '_nextis'; go.id = sid + '_next';
@@ -1505,7 +1507,7 @@
       }
     }
     box.append(lab, sel);
-    if (cur) unlockedPart(box, k, s, e, sid, h, planMsgs.get(k.key), name, false);
+    if (cur) unlockedPart(box, k, s, e, sid, h, planMsgs.get(k.key), name, TXT.cpAhead);
   }
   // The editor cards' state lines: per kid, failed (with «Δοκίμασε τώρα») while an edit waits and the last cycle failed,
   // waiting while an edit waits, saved once the kid has a schedule in the device copy and nothing waits; empty otherwise.
