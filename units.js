@@ -5,5 +5,5 @@
    the unit tests run it with --check and fail while this file is stale. */
 window.NOOS_UNITS = {"kids": [
  {"key":"tot5","subjects":[{"key":"fysiki","pages":[{"id":"dim5_fysiki_ch01","unit":"dim5_fysiki_ch01"},{"id":"dim5_fysiki_ch02","unit":"dim5_fysiki_ch02"},{"id":"dim5_fysiki_ch03","unit":"dim5_fysiki_ch03"}]},{"key":"mathimatika","pages":[{"id":"dim5_mathimatika_ch10","unit":"dim5_mathimatika_ch10"},{"id":"dim5_mathimatika_ch10b","unit":"dim5_mathimatika_ch10"}]},{"key":"istoria","pages":[{"id":"dim5_istoria_ch13","unit":"dim5_istoria_ch13"}]}]},
- {"key":"tot3","subjects":[{"key":"mathimatika","pages":[{"id":"dim3_mathimatika_en01","unit":"dim3_mathimatika_en01"},{"id":"dim3_mathimatika_en01b","unit":"dim3_mathimatika_en01"},{"id":"dim3_mathimatika_en01c","unit":"dim3_mathimatika_en01"}]}]}
+ {"key":"tot3","subjects":[{"key":"mathimatika","pages":[{"id":"dim3_mathimatika_en01","unit":"dim3_mathimatika_en01"},{"id":"dim3_mathimatika_en01b","unit":"dim3_mathimatika_en01"},{"id":"dim3_mathimatika_en01c","unit":"dim3_mathimatika_en01"},{"id":"dim3_mathimatika_en02","unit":"dim3_mathimatika_en02"},{"id":"dim3_mathimatika_en02b","unit":"dim3_mathimatika_en02"},{"id":"dim3_mathimatika_en02c","unit":"dim3_mathimatika_en02"}]}]}
 ]};
