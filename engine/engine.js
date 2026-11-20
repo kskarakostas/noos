@@ -852,7 +852,7 @@ var Engine = window.Engine = {
   build(cfg){
     const sub = cfg.subject || {};
     document.documentElement.lang='el';
-    document.title = `${cfg.grade} · ${sub.name||''} · ${cfg.chapter||''} ${cfg.title}`.replace(/\s+/g,' ');
+    document.title = `${cfg.grade}, ${sub.name||''}, ${cfg.chapter||''} ${cfg.title}`.replace(/\s+/g,' ');
     document.body.classList.add('themed');   /* round 3: no per-subject page tint (sub.color and sub.soft stay in the data, unused here) */
     (cfg.games||[]).forEach(g=>{if(g.key&&g.key!==g.id)Engine.shell.rowTab[g.id]=g.key});   /* a game whose row key is not its tab id */
     const tabs=[['sum','📘 Σύνοψη']];
@@ -934,7 +934,7 @@ Engine._makePG=function(){return (function(){
     const all=cnt?Math.round(sum/cnt*100):0;
     document.getElementById('pgRows').innerHTML=rows;
     document.getElementById('pgPct').textContent=all+'%';
-    document.getElementById('pgAll').innerHTML=`Συνολικά: <b>${all}%</b> · ${ok} ${ok===1?'σωστή απάντηση':'σωστές απαντήσεις'} σε ${n} ${n===1?'προσπάθεια':'προσπάθειες'}`;
+    document.getElementById('pgAll').innerHTML=`Συνολικά: <b>${all}%</b>, ${ok} ${ok===1?'σωστή απάντηση':'σωστές απαντήσεις'} σε ${n} ${n===1?'προσπάθεια':'προσπάθειες'}`;
     try{Engine.shell.refresh()}catch(e){console.error(e)}   /* the chip, the tiles and the rail follow the table */
   }
   const api={
@@ -1377,9 +1377,12 @@ Engine.shell={
       const a=document.activeElement;if(!a||a===document.body||!a.getClientRects().length)S._focusView('sum');
     });
     /* a tapped control that left the page with its screen: the focus goes on (see _focusLost). Seen in the capture phase,
-       before the control's own handler takes it out of the page */
+       before the control's own handler takes it out of the page. The focus counts as lost also while it still sits on a
+       control that is hidden or disabled: Chrome moves it to the page only at its next rendering, after this timeout (a
+       verdict panel that hides the action row with its check button) */
+    const shown=x=>x.isConnected&&!x.closest('[disabled],[hidden]')&&x.getClientRects().length>0;
     document.addEventListener('click',e=>{const t=e.target;if(!t||typeof t.closest!=='function'||!t.closest('main'))return;
-      setTimeout(()=>{if(t.isConnected&&!t.closest('[disabled],[hidden]')&&t.getClientRects().length)return;const a=document.activeElement;if(a&&a!==document.body&&a!==document.documentElement)return;S._focusLost()},0)},true);
+      setTimeout(()=>{if(shown(t))return;const a=document.activeElement;if(a&&a!==document.body&&a!==document.documentElement&&shown(a))return;S._focusLost()},0)},true);
   },
   /* reads text out through #shLive (cleared first, so the same words are read again) */
   announce(text){
