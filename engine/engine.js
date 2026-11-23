@@ -299,11 +299,29 @@ var Engine = window.Engine = {
     tf(){ return `<h2>Σωστό ή Λάθος;</h2><p class="muted">Κάθε σωστή απάντηση στη σειρά ανεβάζει το 🔥.</p><div class="card" id="tfBox"></div>`; }
   },
 
+  /* where the deck opens: the first card not rated yet, so a child who left halfway goes on from there (rated as the gate of
+     the games counts it, Rewards.pathState: the path's ratings and the known cards); the first card when none or all are, or
+     after «Μηδενισμός», which keeps the path and clears the list of the cards row */
+  _cardSeen(progress){
+    const R=window.Rewards,list=progress&&typeof progress==='object'&&progress.cards?progress.cards.list:null;
+    return R&&typeof R.pathOf==='function'&&Array.isArray(list)?{known:new Set(list),seen:new Set([...(R.pathOf(progress).rated||[]),...list])}:null;
+  },
+  _cardStart(n,progress){
+    const c=Engine._cardSeen(progress);
+    if(c)for(let i=0;i<n;i++)if(!c.seen.has(i))return i;
+    return 0;
+  },
+  /* the cards rated «Όχι ακόμα»: rated and not known, so «Επανάληψη λαθών» has them after a reload too */
+  _cardsNotYet(n,progress){
+    const c=Engine._cardSeen(progress);
+    return c?[...c.seen].filter(i=>i<n&&!c.known.has(i)):[];
+  },
+
   /* ---------- flashcards: cards = [[cat, question, answer, extra], ...] ---------- */
   flashcards(o){
     const CARDS = o.cards, TAGS = o.tags || {};
     const tagOf = c => TAGS[c[0]] || [String(c[0]).toUpperCase(), 'pi'];
-    let fcDeck=[],fcI=0,fcCat='all',fcKnown=new Set(((PG.get('cards')||{}).list||[]).filter(i=>i<CARDS.length)),fcWrong=new Set(),fcSeen=false;
+    let fcDeck=[],fcI=0,fcCat='all',fcKnown=new Set(((PG.get('cards')||{}).list||[]).filter(i=>i<CARDS.length)),fcWrong=new Set(Engine._cardsNotYet(CARDS.length,PG.store())),fcSeen=false;
     const fcFiltered=()=>CARDS.map((c,i)=>i).filter(i=>fcCat==='all'||CARDS[i][0]===fcCat);
     /* self-rating needs the answer seen: both buttons stay disabled until the current card is flipped once */
     const fcRate=on=>{fcSeen=on;$('#fcYes').disabled=$('#fcNo').disabled=!on};
@@ -351,7 +369,7 @@ var Engine = window.Engine = {
     $('#fcShuffle').onclick=()=>fcBuild(shuffle(fcDeck.length?fcDeck:fcFiltered()));
     $('#fcRetry').onclick=()=>fcBuild(shuffle(fcFiltered().filter(i=>fcWrong.has(i))));
     $$('#fcFilter button').forEach(b=>b.onclick=()=>{$$('#fcFilter button').forEach(x=>x.classList.toggle('on',x===b));fcCat=b.dataset.c;fcBuild(fcFiltered())});
-    fcBuild(fcFiltered());
+    fcBuild(fcFiltered());fcI=Engine._cardStart(CARDS.length,PG.store());fcShow();
   },
 
   /* the cards on the activity frame (round 3, W6b; the contract at the top of engine-ui.css). The 8 hand-written pages carry

@@ -66,7 +66,7 @@
   const BOOK_KEY = 'noos_sync';
   const SYNC_RE = /^(progress_[A-Za-z0-9_-]{1,64}|noos_kid_[A-Za-z0-9_-]{1,32}|noos_family)$/;   // = noos.stores key check
   const URL_RE = /^https:\/\/[A-Za-z0-9.-]+(:\d{1,5})?\/?$/;
-  const VENDOR = 'engine/vendor/supabase.js?v=db7b64bcb3';
+  const VENDOR = 'engine/vendor/supabase.js?v=bb1889adf3';
   const DEBOUNCE_MS = 3000;
   const BACKOFF_MS = [5000, 15000, 60000, 300000];   // then every 5 minutes while the page is open
   const OVERLAP_MS = 2 * 60 * 1000;   // pull window before `since`: longer than any write transaction lasts (statement timeout)
