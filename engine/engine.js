@@ -534,6 +534,15 @@ var Engine = window.Engine = {
     return r ? R(r) : null;
   },
 
+  /* a finished matching board counts one answer per pair: all right within the move limit, fewer the slower (never under half,
+     never all), so a first board earns stars at once, a slow one still a star */
+  _memoryRight(pairs,moves,good){return moves<=good?pairs:Math.max(Math.ceil(pairs/2),Math.min(pairs-1,Math.round(pairs*good/moves)))},
+  memoryDone(key,pairs,moves,good){
+    const right=Engine._memoryRight(pairs,moves,good);
+    PG.hits(key,Array.from({length:pairs},(_,i)=>Math.ceil((i+1)*right/pairs)>Math.ceil(i*right/pairs)));   // spread evenly: a run of wrong ones at one end would leave the window of recent answers first
+    return moves<=good;
+  },
+
   /* ---------- memory: pairs = [[left, right], ...]; 6 random pairs per game ---------- */
   memory(o){
     const box=$(o.el), key=o.key||'mem', N=o.n||6, good=o.goodMoves||N*2;
@@ -558,7 +567,7 @@ var Engine = window.Engine = {
       d.classList.add('up');face(d,true);m.open.push([k,d]);if(m.open.length<2)return;
       m.moves++;Engine.shell.played();   /* a pair turned over is a checked answer (the learning path) */const [[k1,d1],[k2,d2]]=m.open;m.open=[];
       if(m.cards[k1].id===m.cards[k2].id){[d1,d2].forEach(x=>{x.classList.add('done');x.setAttribute('aria-disabled','true');x.insertAdjacentHTML('beforeend',Engine._okMark(true))});m.done++;
-        if(m.done===m.pairs.length){const ok=m.moves<=good;PG.hit(key,ok);Engine._cheer(ok);info();
+        if(m.done===m.pairs.length){const ok=Engine.memoryDone(key,m.pairs.length,m.moves,good);Engine._cheer(ok);info();
           const say=m.moves<=Math.round(good*.75)?'🏆 Μνήμη ελέφαντα!':ok?'🌟 Πολύ καλά!':'💪 Ξαναπροσπάθησε με λιγότερες!';
           /* the end: the pairs as a list in place of the cards, the verdict and «Νέο παιχνίδι» in the panel */
           R('grid').hidden=true;R('body').insertAdjacentHTML('beforeend',`<div class="mem-end" data-r="pairs"><p class="gm-lbl">Τα ζευγάρια:</p><ul class="mem-pairs">${m.pairs.map(p=>`<li>${p[0]} ↔ ${p[1]}</li>`).join('')}</ul></div>`);
@@ -961,6 +970,10 @@ Engine._makePG=function(){return (function(){
     hit(k,ok){Engine.shell.played(k);let s=S[k];if(!s||typeof s!=='object'||Array.isArray(s))s=S[k]={ok:0,n:0};
       if(window.Rewards){try{Rewards.pushResult(s,ok)}catch(e){console.error(e)}}else{s.n=(s.n||0)+1;s.ok=(s.ok||0)+(ok?1:0)}
       save();reward(k,rowType(k),ok);render()},
+    /* several answers at once (a matching board): all are stored first, so the stars are those of the whole */
+    hits(k,oks){Engine.shell.played(k);let s=S[k];if(!s||typeof s!=='object'||Array.isArray(s))s=S[k]={ok:0,n:0};
+      oks.forEach(ok=>{if(window.Rewards){try{Rewards.pushResult(s,ok)}catch(e){console.error(e)}}else{s.n=(s.n||0)+1;s.ok=(s.ok||0)+(ok?1:0)}});
+      save();oks.forEach(ok=>reward(k,rowType(k),ok));render()},
     /* keeps the reward fields best, hi and low across the list replacement; only a list longer than any this row had
        during this page load is an answer: an unchanged list (a redraw), a shorter one (a card marked «Όχι ακόμα») and a
        card toggled back to «Το ήξερα» never reach the reward layer */
