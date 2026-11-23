@@ -20,7 +20,8 @@ window.PLAN = {
   },
   "tot3": {
    "subjects": {
-    "mathimatika": {}
+    "mathimatika": {},
+    "istoria": {}
    }
   }
  }

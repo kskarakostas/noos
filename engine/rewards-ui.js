@@ -264,7 +264,7 @@
   // the quest is today's. PLAN_WAIT_MS is only a safety net for a request that neither loads nor fails: the quest is then
   // built with what has arrived, and kept for the day.
   const PLAN_WAIT_MS = 3000;
-  const PLAN_FILES = [['PLAN', 'plan.js?v=db7b64bcb3'], ['NOOS_UNITS', 'units.js?v=db7b64bcb3']];
+  const PLAN_FILES = [['PLAN', 'plan.js?v=bb1889adf3'], ['NOOS_UNITS', 'units.js?v=bb1889adf3']];
   // planUsed, unitsUsed: what was handed to Rewards.usePlan on settling
   let planSettled = false, planAsked = false, planUsed = null, unitsUsed = null;
   const planWaiters = [];
@@ -329,9 +329,9 @@
         try { if (window.Sync.boot({ config: window.NOOS_SYNC }).status === 'off') return; } catch (e) { console.error(e); return; }
         ready();
       };
-      if (window.Sync) start(true); else addScript('engine/sync.js?v=db7b64bcb3', start);
+      if (window.Sync) start(true); else addScript('engine/sync.js?v=bb1889adf3', start);
     };
-    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js?v=db7b64bcb3', boot);
+    if (typeof window.NOOS_SYNC !== 'undefined') boot(); else addScript('sync-config.js?v=bb1889adf3', boot);
   }
   // A chapter page: a pull that changed this page's progress reloads the engine's live store through its own storage
   // listener (as for a write from another tab), then the strip, countdown and guide follow.
